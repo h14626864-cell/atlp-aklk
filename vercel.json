@@ -1,0 +1,10 @@
+{
+  "rewrites": [
+    { "source": "/index.html", "destination": "/index.html" },
+    { "source": "/dashboard.html", "destination": "/dashboard.html" },
+    { "source": "/qr.html", "destination": "/qr.html" },
+    { "source": "/details.html", "destination": "/details.html" },
+    { "source": "/details/:slug", "destination": "/_details.html?r=:slug" },
+    { "source": "/:slug", "destination": "/_menu.html?r=:slug" }
+  ]
+}
