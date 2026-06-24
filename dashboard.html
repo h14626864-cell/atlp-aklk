@@ -129,6 +129,9 @@
   .order-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .order-actions button{padding:8px 16px;border-radius:8px;font-weight:600;font-size:.82rem;transition:opacity .15s}
   .order-actions button:hover{opacity:.85}
+  .order-type-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:.72rem;font-weight:700;margin-bottom:8px}
+  .order-type-tag.delivery{background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9}
+  .order-type-tag.dinein{background:#e3f2fd;color:#1565c0;border:1px solid #bbdefb}
   .btn-send-delivery{background:#eef2ff;color:#4338ca}
   .btn-preparing{background:#fffbeb;color:#d97706}
   .btn-ready{background:var(--primary-light);color:var(--primary)}
@@ -1018,7 +1021,7 @@ function renderOrders(){
     const grandTotal=order.total!=null?order.total:(subtotal+deliveryFee);
     return`
     <div class="order-card ${order.status}">
-      <div class="order-header"><div><div class="order-id">${order.id}</div><div class="order-time">${order.time}</div></div><span class="status-badge ${statusClass[order.status]}">${statusMap[order.status]}</span></div>
+      <div class="order-header"><div><div class="order-id">${order.id}</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px"><span class="order-type-tag ${order.type==='dinein'?'dinein':'delivery'}">${order.type==='dinein'?'🪑 صالة':'🛵 دليفري'}</span><span class="order-time">${order.time}</span></div></div><span class="status-badge ${statusClass[order.status]}">${statusMap[order.status]}</span></div>
       <div class="order-customer">
         <div class="oc-box oc-name"><span class="oc-label">👤 الاسم</span><span class="oc-value">${order.customerName}</span></div>
         <div class="oc-box oc-phone"><span class="oc-label">📱 الهاتف</span><span class="oc-value">${order.phone}</span></div>
@@ -1035,7 +1038,7 @@ function renderOrders(){
         ${order.status==='pending'?`<button class="btn-preparing" onclick="updateOrderStatus('${order.id}','preparing')">بدء التحضير</button>`:''}
         ${order.status==='preparing'?`<button class="btn-ready" onclick="updateOrderStatus('${order.id}','ready')">جاهز للتسليم</button>`:''}
         ${order.status==='ready'?`<button class="btn-done" onclick="updateOrderStatus('${order.id}','done')">تم التسليم</button>`:''}
-        <button class="btn-send-delivery" onclick="openSendDeliveryModal('${order.id}')">🛵 إرسال لعامل توصيل</button>
+        ${order.type!=='dinein'?`<button class="btn-send-delivery" onclick="openSendDeliveryModal('${order.id}')">🛵 إرسال لعامل توصيل</button>`:''}
         ${order.status!=='done'?`<button class="btn-del" onclick="deleteOrder('${order.id}')">حذف</button>`:''}
         <div style="margin-right:auto;display:flex;gap:6px">
           <a href="https://wa.me/2${order.phone}" target="_blank" class="btn-wa" title="واتساب">${waIcon}</a>

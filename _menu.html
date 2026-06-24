@@ -693,6 +693,37 @@ img{display:block;max-width:100%}
   font-size:.88rem;transition:border-color .2s;background:#fff;
 }
 .m-checkout-fld input:focus,.m-checkout-fld textarea:focus{border-color:#ff6b2b}
+/* ═══════ ORDER TYPE SELECTOR ═══════ */
+.m-order-type{margin-bottom:18px}
+.m-order-type-title{font-size:.85rem;font-weight:700;color:#444;margin-bottom:10px}
+.m-order-type-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.m-otype-btn{
+  padding:14px 10px;border-radius:14px;border:2px solid #eee;
+  background:#fafafa;cursor:pointer;transition:all .2s;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  font-family:'Tajawal',sans-serif;
+}
+.m-otype-btn:hover{border-color:#ffb830;background:#fffbf5}
+.m-otype-btn.active{border-color:#ff6b2b;background:#fff4ed}
+.m-otype-btn .m-otype-icon{font-size:1.8rem;line-height:1}
+.m-otype-btn .m-otype-label{font-size:.85rem;font-weight:800;color:#333}
+.m-otype-btn .m-otype-sub{font-size:.7rem;color:#888;font-weight:500}
+.m-otype-btn.active .m-otype-label{color:#ff6b2b}
+.m-otype-btn.active .m-otype-sub{color:#e8721a}
+
+/* دايناميك: إخفاء/إظهار حقول */
+.m-field-delivery,.m-field-dinein{transition:all .2s}
+.m-field-hidden{display:none!important}
+
+/* badge نوع الطلب في الـ success */
+.m-order-type-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 16px;border-radius:20px;font-size:.8rem;font-weight:700;
+  margin-bottom:8px;
+}
+.m-order-type-badge.delivery{background:#e8f5e9;color:#2e7d32}
+.m-order-type-badge.dinein{background:#e3f2fd;color:#1565c0}
+
 .m-delivery-note{
   background:#fff9f0;padding:10px 14px;border-radius:10px;
   font-size:.8rem;color:#e8721a;margin-bottom:14px;
@@ -1872,19 +1903,40 @@ function buildCartPage(){
     </div>
   `).join('');
 
-  h+=`<div class="m-cart-summary">
+  // Summary - يتغير حسب نوع الطلب
+  const selectedType = window._orderType || 'delivery';
+  const showDelivery = selectedType === 'delivery';
+  h+=`<div class="m-cart-summary" id="cartSummaryBox">
     <div class="m-cart-summary-row"><span>عدد الاصناف</span><span>${count}</span></div>
     <div class="m-cart-summary-row"><span>المجموع الفرعي</span><span>${total.toFixed(2)} ج.م</span></div>
-    <div class="m-cart-summary-row"><span>🛵 رسوم التوصيل</span><span>${deliveryFee.toFixed(2)} ج.م</span></div>
-    <div class="m-cart-summary-total"><span>الاجمالي</span><span>${(total+deliveryFee).toFixed(2)} ج.م</span></div>
+    <div class="m-cart-summary-row" id="deliveryFeeRow" style="${showDelivery?'':'display:none'}"><span>🛵 رسوم التوصيل</span><span>${deliveryFee.toFixed(2)} ج.م</span></div>
+    <div class="m-cart-summary-total"><span>الاجمالي</span><span id="cartTotalVal">${showDelivery?(total+deliveryFee).toFixed(2):total.toFixed(2)} ج.م</span></div>
   </div>`;
 
   h+=`<div class="m-checkout">
-    <div class="m-checkout-title">بيانات الطلب</div>
+    <div class="m-checkout-title">اختار نوع الطلب</div>
+    <div class="m-order-type">
+      <div class="m-order-type-btns">
+        <button class="m-otype-btn${showDelivery?'':' active'}" id="btnDineIn" onclick="setOrderType('dinein')">
+          <span class="m-otype-icon">🪑</span>
+          <span class="m-otype-label">صالة</span>
+          <span class="m-otype-sub">تناول في المكان</span>
+        </button>
+        <button class="m-otype-btn${showDelivery?' active':''}" id="btnDelivery" onclick="setOrderType('delivery')">
+          <span class="m-otype-icon">🛵</span>
+          <span class="m-otype-label">دليفري</span>
+          <span class="m-otype-sub">توصيل للعنوان</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="m-checkout-title" style="margin-top:4px">بيانات الطلب</div>
     <div class="m-checkout-fld"><label>الاسم *</label><input type="text" id="coName" placeholder="اسمك الكريم"></div>
-    <div class="m-checkout-fld"><label>رقم الهاتف *</label><input type="tel" id="coPhone" placeholder="01xxxxxxxxx"></div>
-    <div class="m-checkout-fld"><label>العنوان *</label><textarea id="coAddr" rows="2" placeholder="عنوانك بالتفصيل"></textarea></div>`;
-    if(R.duration)h+=`<div class="m-delivery-note"><svg width="16" height="16" fill="#e8721a" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>وقت التوصيل المتوقع: <b>${R.duration} دقيقة</b></div>`;
+    <div class="m-checkout-fld m-field-delivery${showDelivery?'':' m-field-hidden'}"><label>رقم الهاتف *</label><input type="tel" id="coPhone" placeholder="01xxxxxxxxx"></div>
+    <div class="m-checkout-fld m-field-delivery${showDelivery?'':' m-field-hidden'}"><label>العنوان *</label><textarea id="coAddr" rows="2" placeholder="عنوانك بالتفصيل"></textarea></div>
+    <div class="m-checkout-fld m-field-dinein${showDelivery?' m-field-hidden':''}"><label>رقم الموبايل (اختياري)</label><input type="tel" id="coPhoneDine" placeholder="01xxxxxxxxx"></div>
+    <div class="m-checkout-fld m-field-dinein${showDelivery?' m-field-hidden':''}"><label>رقم الترابيزة (اختياري)</label><input type="text" id="coTable" placeholder="مثال: 5"></div>`;
+    if(R.duration)h+=`<div class="m-delivery-note m-field-delivery${showDelivery?'':' m-field-hidden'}" id="durationNote"><svg width="16" height="16" fill="#e8721a" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>وقت التوصيل المتوقع: <b>${R.duration} دقيقة</b></div>`;
   h+=`<div class="m-checkout-fld"><label>ملاحظات (اختياري)</label><input type="text" id="coNotes" placeholder="اي تعليمات اضافية..."></div>
     <button class="m-place-order" onclick="placeOrder()">تأكيد الطلب</button>
   </div>`;
@@ -1902,6 +1954,27 @@ function buildCartPage(){
   }
 }
 
+function setOrderType(type){
+  window._orderType = type;
+  const deliveryFee=(R&&typeof R.deliveryFee==='number')?R.deliveryFee:20;
+  const subtotal=cart.reduce((a,i)=>a+i.price*i.qty,0);
+
+  // أزرار الاختيار
+  document.getElementById('btnDineIn')?.classList.toggle('active', type==='dinein');
+  document.getElementById('btnDelivery')?.classList.toggle('active', type==='delivery');
+
+  // إظهار/إخفاء حقول دليفري
+  document.querySelectorAll('.m-field-delivery').forEach(el=>el.classList.toggle('m-field-hidden', type!=='delivery'));
+  // إظهار/إخفاء حقول صالة
+  document.querySelectorAll('.m-field-dinein').forEach(el=>el.classList.toggle('m-field-hidden', type!=='dinein'));
+
+  // تحديث الـ summary
+  const feeRow=document.getElementById('deliveryFeeRow');
+  const totalVal=document.getElementById('cartTotalVal');
+  if(feeRow) feeRow.style.display = type==='delivery'?'':'none';
+  if(totalVal) totalVal.textContent = (type==='delivery'?(subtotal+deliveryFee):subtotal).toFixed(2)+' ج.م';
+}
+
 function chCartQty(idx,d){
   cart[idx].qty+=d;
   if(cart[idx].qty<=0)cart.splice(idx,1);
@@ -1915,31 +1988,47 @@ function placeOrder(){
     toast('يرجى تسجيل الدخول أولاً','err');
     return;
   }
+  const orderType = window._orderType || 'delivery';
   const name=document.getElementById('coName')?.value.trim();
-  const phone=document.getElementById('coPhone')?.value.trim();
-  if(!name||!phone){toast('ادخل اسمك ورقم هاتفك','err');return;}
+  if(!name){toast('ادخل اسمك الكريم','err');return;}
+
   const num='ORD-'+Date.now().toString().slice(-5);
   const subtotal=cart.reduce((a,i)=>a+i.price*i.qty,0);
   const deliveryFee=(R&&typeof R.deliveryFee==='number')?R.deliveryFee:20;
+
+  let phone='', address='', tableNum='';
+  if(orderType==='delivery'){
+    phone=document.getElementById('coPhone')?.value.trim();
+    address=document.getElementById('coAddr')?.value.trim();
+    if(!phone){toast('ادخل رقم هاتفك','err');return;}
+    if(!address){toast('ادخل العنوان','err');return;}
+  } else {
+    phone=document.getElementById('coPhoneDine')?.value.trim()||'';
+    tableNum=document.getElementById('coTable')?.value.trim()||'';
+  }
+
   const order={
-    id:num,customerName:name,phone,
-    address:document.getElementById('coAddr')?.value||'',
-    table:'',
+    id:num,
+    customerName:name,
+    phone,
+    address: orderType==='delivery'?address:'',
+    table: orderType==='dinein'?tableNum:'',
     notes:document.getElementById('coNotes')?.value||'',
     items:cart.map(i=>({id:i.id,name:i.displayName||i.name,price:i.price,qty:i.qty,size:i.selectedSize?i.selectedSize.name:null,extras:(i.selectedExtras||[]).map(e=>e.name)})),
-    deliveryFee:deliveryFee,
-    total:subtotal+deliveryFee,
-    type:'delivery',status:'pending',
+    deliveryFee: orderType==='delivery'?deliveryFee:0,
+    total: orderType==='delivery'?subtotal+deliveryFee:subtotal,
+    type: orderType,
+    status:'pending',
     customerId: currentUser ? currentUser.id : null,
     time:new Date().toLocaleString('ar-EG')
   };
+
   db.collection('restaurants').doc(restId).update({
     orders_list: firebase.firestore.FieldValue.arrayUnion(order),
     orders: firebase.firestore.FieldValue.increment(1)
   }).then(()=>{
     if(!R.orders_list) R.orders_list=[];
     R.orders_list.unshift(order);
-    // حفظ الطلب في localStorage لتتبع العميل
     try{
       const localKey='emenu_orders_'+restId;
       let stored=[];
@@ -1948,12 +2037,19 @@ function placeOrder(){
       localStorage.setItem(localKey,JSON.stringify(stored));
     }catch(e){console.error('localStorage save error:',e);}
     cart=[];syncFloatBar();
+    window._orderType='delivery';
+
+    const isDineIn = orderType==='dinein';
     document.getElementById('cartPageBody').innerHTML=`
     <div class="m-success">
-      <div class="m-success-icon">✓</div>
-      <h3>تم استلام طلبك بنجاح</h3>
+      <div class="m-success-icon">${isDineIn?'🪑':'🛵'}</div>
+      <h3>تم استلام طلبك بنجاح!</h3>
+      <div class="m-order-type-badge ${isDineIn?'dinein':'delivery'}">${isDineIn?'🪑 طلب صالة':'🛵 طلب دليفري'}</div>
       <div class="m-success-tag">${num}</div>
-      <p>شكراً ${name}!<br>طلبك هيوصلك خلال ${R.duration||'30-45'} دقيقة</p>
+      <p>شكراً ${name}!<br>${isDineIn
+        ? (tableNum?`طلبك هيوصلك على الترابيزة رقم <b>${tableNum}</b>`:'طلبك قيد التحضير، هيوصلك للصالة')
+        : `طلبك هيوصلك خلال ${R.duration||'30-45'} دقيقة`
+      }</p>
       <button class="m-success-btn" onclick="closeCartPage()">العودة للمنيو</button>
     </div>`;
   }).catch(err=>toast('خطأ في إرسال الطلب: '+err.message,'err'));
