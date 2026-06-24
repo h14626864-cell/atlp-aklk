@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>atlop-akltk - منصة المنيوهات الإلكترونية</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --primary:#ff6b2b;--primary-dark:#e8551a;--primary-light:#fff6f2;
+    --dark:#1a1a2e;--gold:#ffb830;--green:#00b894;--red:#ef4444;
+    --text:#1a1a1a;--text2:#6b7280;--border:#e5e7eb;--white:#fff;--bg:#f5f5f5;
+    --shadow:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 16px rgba(0,0,0,.08);
+  }
+  body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  button{font-family:'Tajawal',sans-serif;cursor:pointer;border:none;outline:none}
+  input,textarea,select{font-family:'Tajawal',sans-serif;outline:none}
+
+  /* LOGIN */
+  #loginPage{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+  .login-card{background:var(--white);border-radius:20px;padding:45px 40px;width:420px;max-width:95%;box-shadow:var(--shadow-md)}
+  .login-logo{text-align:center;margin-bottom:30px}
+  .login-logo .brand-icon{width:60px;height:60px;border-radius:16px;background:var(--primary);margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;color:#fff;font-weight:900}
+  .login-logo .brand{font-size:1.6rem;font-weight:900;color:var(--primary)}
+  .login-logo p{color:var(--text2);font-size:.85rem;margin-top:4px}
+  .form-group{margin-bottom:18px}
+  .form-group label{display:block;font-weight:600;margin-bottom:6px;font-size:.84rem;color:var(--text2)}
+  .form-group input,.form-group textarea,.form-group select{
+    width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;
+    font-size:.9rem;transition:border-color .2s;background:#fafafa;
+  }
+  .form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--primary);background:#fff}
+  .btn-login{
+    width:100%;padding:13px;border-radius:12px;background:var(--primary);color:#fff;
+    font-size:.95rem;font-weight:700;box-shadow:0 4px 14px rgba(255,107,43,.25);
+    transition:transform .15s;
+  }
+  .btn-login:hover{transform:translateY(-1px)}
+  .login-hint{text-align:center;color:var(--text2);font-size:.8rem;margin-top:14px}
+  .login-error{background:#fef2f2;border:1px solid #fecaca;color:var(--red);padding:10px;border-radius:10px;margin-bottom:14px;text-align:center;font-size:.85rem;font-weight:600;display:none}
+
+  /* ADMIN */
+  #adminPanel{display:none;min-height:100vh;flex-direction:column}
+  .topbar{
+    background:var(--white);padding:0 30px;height:60px;display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;z-index:100;box-shadow:0 1px 0 var(--border);
+  }
+  .topbar-brand{font-size:1.15rem;font-weight:900;color:var(--primary);display:flex;align-items:center;gap:8px}
+  .topbar-right{display:flex;align-items:center;gap:12px}
+  .admin-badge{background:var(--primary-light);color:var(--primary);padding:5px 14px;border-radius:20px;font-size:.82rem;font-weight:700}
+  .btn-logout{background:#fef2f2;color:var(--red);padding:8px 16px;border-radius:10px;font-size:.84rem;font-weight:600;transition:background .15s}
+  .btn-logout:hover{background:#fee2e2}
+
+  .admin-content{flex:1;padding:24px 30px;max-width:1200px}
+  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:28px}
+  .stat-card{background:var(--white);border-radius:14px;padding:18px;border:1px solid var(--border);box-shadow:var(--shadow)}
+  .stat-card .num{font-size:1.5rem;font-weight:900;color:var(--text)}
+  .stat-card .lbl{color:var(--text2);font-size:.78rem;margin-top:2px}
+
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .section-title{font-size:1.1rem;font-weight:800}
+  .btn-primary{
+    background:var(--primary);color:#fff;padding:10px 20px;border-radius:10px;
+    font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:6px;
+    box-shadow:0 3px 10px rgba(255,107,43,.2);transition:transform .15s;
+  }
+  .btn-primary:hover{transform:translateY(-1px)}
+
+  /* TABLE */
+  .table-container{background:var(--white);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;border:1px solid var(--border)}
+  .table-container table{width:100%;border-collapse:collapse}
+  .table-container th{background:#fafafa;color:var(--text);padding:13px 16px;text-align:right;font-weight:700;font-size:.84rem;border-bottom:1px solid var(--border)}
+  .table-container td{padding:13px 16px;border-bottom:1px solid #f5f5f5;font-size:.88rem;vertical-align:middle}
+  .table-container tr:last-child td{border-bottom:none}
+  .table-container tr:hover td{background:#fafafa}
+  .badge{display:inline-flex;align-items:center;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:600}
+  .badge-green{background:#ecfdf5;color:#059669}
+  .badge-blue{background:#eff6ff;color:#2563eb}
+  .badge-orange{background:#fff7ed;color:#ea580c}
+  .action-btns{display:flex;gap:6px}
+  .btn-sm{padding:6px 14px;border-radius:8px;font-size:.78rem;font-weight:600;transition:all .15s}
+  .btn-sm:hover{opacity:.8}
+  .btn-view{background:var(--primary-light);color:var(--primary)}
+  .btn-edit{background:#eff6ff;color:#2563eb}
+  .btn-del{background:#fef2f2;color:var(--red)}
+  .btn-qr{background:#f0fdf4;color:#16a34a}
+  .rest-logo{width:40px;height:40px;border-radius:10px;object-fit:cover}
+  .rest-logo-placeholder{width:40px;height:40px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#fff;font-weight:900}
+
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+  .modal-overlay.active{display:flex}
+  .modal{background:var(--white);border-radius:18px;padding:28px;width:600px;max-width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+  .modal-title{font-size:1.15rem;font-weight:800}
+  .btn-close{background:#f5f5f5;border:none;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:background .15s;color:var(--text2)}
+  .btn-close:hover{background:#eee}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .form-group-m{margin-bottom:16px}
+  .form-group-m label{display:block;font-weight:600;margin-bottom:6px;font-size:.84rem;color:var(--text2)}
+  .form-group-m input,.form-group-m select,.form-group-m textarea{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.88rem;transition:border-color .2s;background:#fafafa}
+  .form-group-m input:focus,.form-group-m select:focus,.form-group-m textarea:focus{border-color:var(--primary);background:#fff}
+  .form-group-m textarea{resize:vertical;min-height:70px}
+  .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:22px}
+  .btn-cancel{background:#f5f5f5;color:var(--text2);padding:10px 20px;border-radius:10px;font-size:.88rem;font-weight:600;transition:background .15s}
+  .btn-cancel:hover{background:#eee}
+
+  /* LINKS MODAL */
+  .links-box{background:var(--bg);border-radius:12px;padding:18px;margin-bottom:14px}
+  .link-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .link-row:last-child{margin-bottom:0}
+  .link-label{font-weight:600;font-size:.82rem;color:var(--text2);white-space:nowrap;min-width:110px}
+  .link-val{flex:1;background:var(--white);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.82rem;color:var(--primary);word-break:break-all}
+  .btn-copy{background:var(--primary-light);color:var(--primary);padding:8px 14px;border-radius:8px;font-size:.8rem;font-weight:600;white-space:nowrap;transition:all .15s}
+  .btn-copy:hover{background:var(--primary);color:#fff}
+  .creds-box{background:var(--dark);border-radius:12px;padding:18px;color:#fff}
+  .creds-box h4{margin-bottom:14px;font-size:.95rem;color:var(--gold);font-weight:800}
+  .cred-row{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.08);border-radius:8px;padding:9px 14px;margin-bottom:8px}
+  .cred-row:last-child{margin-bottom:0}
+  .cred-key{font-size:.82rem;color:rgba(255,255,255,.6)}
+  .cred-val{font-weight:700;font-size:.88rem;color:var(--gold)}
+
+  /* LOGO URL */
+  .logo-url-input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.88rem;transition:border-color .2s;background:#fafafa;direction:ltr;text-align:left}
+  .logo-url-input:focus{border-color:var(--primary);background:var(--white)}
+  .logo-url-input::placeholder{color:#bbb;direction:rtl;text-align:right}
+  .logo-preview-wrap{display:flex;align-items:center;gap:12px;margin-top:10px;display:none}
+  .logo-preview-wrap.visible{display:flex}
+  .logo-preview-wrap img{width:56px;height:56px;border-radius:10px;object-fit:cover;border:1.5px solid var(--border)}
+  .logo-preview-wrap .remove-logo{width:28px;height:28px;border-radius:50%;background:#fef2f2;color:var(--red);border:1.5px solid #fecaca;display:flex;align-items:center;justify-content:center;font-size:.85rem;cursor:pointer;transition:all .15s}
+  .logo-preview-wrap .remove-logo:hover{background:#fee2e2}
+
+  /* TYPE SELECT */
+  .type-options{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .type-option{border:2px solid var(--border);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa}
+  .type-option:hover{border-color:var(--primary);background:var(--primary-light)}
+  .type-option.selected{border-color:var(--primary);background:var(--primary-light)}
+  .type-option .t-icon{font-size:1.8rem;margin-bottom:6px}
+  .type-option .t-name{font-weight:700;font-size:.92rem}
+  .type-option .t-desc{font-size:.78rem;color:var(--text2);margin-top:2px}
+
+  /* TOAST */
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(100px);background:#1a1a2e;color:#fff;padding:11px 24px;border-radius:10px;font-size:.88rem;z-index:9999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;box-shadow:0 6px 24px rgba(0,0,0,.15)}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .toast.success{background:var(--green)}
+  .toast.error{background:var(--red)}
+
+  .empty-state{text-align:center;padding:50px 20px;color:var(--text2)}
+  .empty-state .e-icon{font-size:3rem;margin-bottom:10px;opacity:.4}
+  .empty-state p{font-size:.88rem}
+  .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+  .loading-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media(max-width:768px){
+    .admin-content{padding:15px}
+    .form-row{grid-template-columns:1fr}
+    .topbar{padding:0 15px}
+    .table-container{overflow-x:auto}
+  }
+</style>
+</head>
+<body>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC-02WpAmx1IZxPH333vhtCz6iJaqDWnq0",
+  authDomain: "atlp-8dd0a.firebaseapp.com",
+  projectId: "atlp-8dd0a",
+  storageBucket: "atlp-8dd0a.firebasestorage.app",
+  messagingSenderId: "566593290431",
+  appId: "1:566593290431:web:b69710081ecdd38fbe860a",
+  measurementId: "G-QJV3XD7Q3S"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+</script>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="brand-icon">A</div>
+      <div class="brand">atlop-akltk</div>
+      <p>منصة المنيوهات الإلكترونية</p>
+    </div>
+    <div class="login-error" id="loginError">اسم المستخدم أو كلمة المرور غير صحيحة</div>
+    <div class="form-group"><label>اسم المستخدم</label><input type="text" id="username" placeholder="admin" value="admin"></div>
+    <div class="form-group"><label>كلمة المرور</label><input type="password" id="password" placeholder="********" value="admin123"></div>
+    <button class="btn-login" onclick="doLogin()">تسجيل الدخول</button>
+    <p class="login-hint">هذه الصفحة مخصصة لإدارة المنصة فقط</p>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel" style="display:none;flex-direction:column">
+  <div class="topbar">
+    <div class="topbar-brand"><div style="width:30px;height:30px;border-radius:8px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:900">A</div> atlop-akltk</div>
+    <div class="topbar-right">
+      <span class="admin-badge">مدير النظام</span>
+      <button class="btn-logout" onclick="doLogout()">تسجيل خروج</button>
+    </div>
+  </div>
+
+  <div class="admin-content">
+    <div class="stats-row">
+      <div class="stat-card"><div class="num" id="statTotal">0</div><div class="lbl">إجمالي المطاعم</div></div>
+      <div class="stat-card"><div class="num" id="statDelivery">0</div><div class="lbl">مطاعم دليفري</div></div>
+      <div class="stat-card"><div class="num" id="statOrders">0</div><div class="lbl">إجمالي الطلبات</div></div>
+      <div class="stat-card"><div class="num" id="statCustomers">0</div><div class="lbl">إجمالي العملاء</div></div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">إدارة المطاعم</div>
+      <button class="btn-primary" onclick="openCreateModal()">+ إنشاء منيو جديد</button>
+    </div>
+
+    <div class="table-container">
+      <table id="restaurantsTable">
+        <thead><tr><th>المطعم</th><th>النوع</th><th>اليوزر / الباسورد</th><th>تاريخ الإنشاء</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
+        <tbody id="restaurantsBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState"><div class="e-icon">🍽</div><p>لا يوجد مطاعم بعد، اضغط "إنشاء منيو جديد" لإضافة أول مطعم</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE/EDIT MODAL -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="modalTitle">إنشاء منيو جديد</div><button class="btn-close" onclick="closeModal('createModal')">✕</button></div>
+    <div class="form-group-m" style="display:none">
+      <label>نوع الخدمة</label>
+      <div class="type-options">
+        <div class="type-option" id="typeDine" onclick="selectType('dine')"><div class="t-icon">🪑</div><div class="t-name">صالة</div><div class="t-desc">طلبات داخل المطعم</div></div>
+        <div class="type-option selected" id="typeDelivery" onclick="selectType('delivery')"><div class="t-icon">🛵</div><div class="t-name">دليفري</div><div class="t-desc">توصيل للعملاء</div></div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group-m"><label>اسم المطعم *</label><input type="text" id="restName" placeholder="مثال: مطعم الأصيل"></div>
+      <div class="form-group-m"><label>رقم الهاتف</label><input type="tel" id="restPhone" placeholder="01xxxxxxxxx"></div>
+    </div>
+    <div class="form-group-m"><label>وصف المطعم</label><textarea id="restDesc" placeholder="وصف مختصر للمطعم..."></textarea></div>
+    <div class="form-group-m">
+      <label>شعار المطعم</label>
+      <input type="url" id="logoUrlInput" class="logo-url-input" placeholder="الصق هنا رابط صورة الشعار (https://...)" oninput="handleLogoUrl(this.value)">
+      <div class="logo-preview-wrap" id="logoPreviewWrap"><img id="logoPreviewImg" src="" alt="معاينة الشعار"><button class="remove-logo" onclick="removeLogoUrl()" title="حذف الشعار">✕</button></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group-m"><label>اسم المستخدم *</label><input type="text" id="restUser" placeholder="مثال: alasel"></div>
+      <div class="form-group-m"><label>كلمة المرور *</label><input type="text" id="restPass" placeholder="مثال: rest123"></div>
+    </div>
+    <div class="form-group-m"><label>اسم الرابط (اللي يظهر بالدومين) * <small style="color:var(--primary);font-weight:400">مثال: alasel → yoursite.com/alasel</small></label><input type="text" id="restSlug" placeholder="مثال: alasel" style="direction:ltr;text-align:left" oninput="this.value=this.value.replace(/[^a-zA-Z0-9_\-]/g,'')"></div>
+    <div class="form-group-m" id="deliveryDurationGroup"><label>مدة التوصيل (بالدقيقة)</label><input type="number" id="restDuration" value="30"></div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="closeModal('createModal')">إلغاء</button><button class="btn-primary" id="saveBtn" onclick="saveRestaurant()">حفظ وإنشاء المنيو</button></div>
+  </div>
+</div>
+
+<!-- LINKS MODAL -->
+<div class="modal-overlay" id="linksModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">روابط وبيانات المطعم</div><button class="btn-close" onclick="closeModal('linksModal')">✕</button></div>
+    <div id="linksContent"></div>
+    <div class="modal-footer"><button class="btn-primary" onclick="closeModal('linksModal')">تم</button></div>
+  </div>
+</div>
+
+<!-- QR MODAL -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal" style="text-align:center;max-width:400px">
+    <div class="modal-header"><div class="modal-title">كود QR للمنيو</div><button class="btn-close" onclick="closeModal('qrModal')">✕</button></div>
+    <div id="qrContent"></div>
+    <div class="modal-footer" style="justify-content:center"><button class="btn-primary" onclick="closeModal('qrModal')">إغلاق</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let restaurants = [];
+let currentType = 'delivery';
+let editingId = null;
+let logoData = null;
+let unsubRestaurants = null;
+
+function showLoading(){document.getElementById('loadingOverlay').style.display='flex';}
+function hideLoading(){document.getElementById('loadingOverlay').style.display='none';}
+
+function doLogin(){
+  const u = document.getElementById('username').value;
+  const p = document.getElementById('password').value;
+  if(u === 'admin' && p === 'admin123'){
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'flex';
+    loadRestaurants();
+    showToast('مرحباً بك في لوحة التحكم','success');
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+    setTimeout(()=>document.getElementById('loginError').style.display='none', 3000);
+  }
+}
+document.addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
+function doLogout(){
+  if(unsubRestaurants){unsubRestaurants();unsubRestaurants=null;}
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'flex';
+}
+
+function loadRestaurants(){
+  showLoading();
+  if(unsubRestaurants){unsubRestaurants();}
+  unsubRestaurants = db.collection('restaurants').onSnapshot(snapshot => {
+    restaurants = [];
+    snapshot.forEach(doc => {
+      restaurants.push({id: doc.id, ...doc.data()});
+    });
+    hideLoading();
+    renderTable();
+    updateStats();
+  }, err => {
+    hideLoading();
+    showToast('خطأ في تحميل البيانات: '+err.message,'error');
+    console.error('Firestore error:', err);
+  });
+}
+
+function updateStats(){
+  document.getElementById('statTotal').textContent = restaurants.length;
+  document.getElementById('statDelivery').textContent = restaurants.length;
+  // Note: orders count needs subcollection query - simplified here
+  document.getElementById('statOrders').textContent = '—';
+  document.getElementById('statCustomers').textContent = '—';
+}
+
+function selectType(type){
+  currentType = type;
+  document.getElementById('typeDine').classList.toggle('selected', type === 'dine');
+  document.getElementById('typeDelivery').classList.toggle('selected', type === 'delivery');
+  document.getElementById('deliveryDurationGroup').style.display = type === 'delivery' ? 'block' : 'none';
+}
+
+function handleLogoUrl(url){
+  const wrap = document.getElementById('logoPreviewWrap');
+  const img = document.getElementById('logoPreviewImg');
+  if(url && url.trim()){
+    logoData = url.trim();
+    img.src = logoData;
+    img.onerror = () => { wrap.classList.remove('visible'); };
+    img.onload = () => { wrap.classList.add('visible'); };
+  } else {
+    logoData = null;
+    wrap.classList.remove('visible');
+  }
+}
+function removeLogoUrl(){
+  logoData = null;
+  document.getElementById('logoUrlInput').value = '';
+  document.getElementById('logoPreviewWrap').classList.remove('visible');
+}
+
+function openCreateModal(){
+  editingId = null;logoData = null;
+  document.getElementById('modalTitle').textContent = 'إنشاء منيو جديد';
+  document.getElementById('saveBtn').textContent = 'حفظ وإنشاء المنيو';
+  document.getElementById('restName').value = '';document.getElementById('restPhone').value = '';
+  document.getElementById('restDesc').value = '';document.getElementById('restUser').value = '';
+  document.getElementById('restPass').value = '';document.getElementById('restSlug').value = '';document.getElementById('restDuration').value = '30';
+  document.getElementById('logoUrlInput').value = '';
+  document.getElementById('logoPreviewWrap').classList.remove('visible');
+  selectType('delivery');document.getElementById('createModal').classList.add('active');
+}
+
+function openEditModal(id){
+  const r = restaurants.find(x => x.id === id);if(!r) return;
+  editingId = id;logoData = r.logo || null;
+  document.getElementById('modalTitle').textContent = 'تعديل بيانات المطعم';
+  document.getElementById('saveBtn').textContent = 'حفظ التعديلات';
+  document.getElementById('restName').value = r.name;document.getElementById('restPhone').value = r.phone || '';
+  document.getElementById('restDesc').value = r.desc || '';document.getElementById('restUser').value = r.username;
+  document.getElementById('restPass').value = r.password;document.getElementById('restSlug').value = r.slug || '';document.getElementById('restDuration').value = r.duration || '30';
+  selectType(r.type || 'delivery');
+  if(r.logo){
+    document.getElementById('logoUrlInput').value = r.logo;
+    const img = document.getElementById('logoPreviewImg');
+    img.src = r.logo;
+    img.onload = () => document.getElementById('logoPreviewWrap').classList.add('visible');
+  }
+  document.getElementById('createModal').classList.add('active');
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('active');}
+
+async function saveRestaurant(){
+  const name = document.getElementById('restName').value.trim();
+  const user = document.getElementById('restUser').value.trim();
+  const pass = document.getElementById('restPass').value.trim();
+  const slug = document.getElementById('restSlug').value.trim().toLowerCase();
+  if(!name || !user || !pass || !slug){showToast('يرجى تعبئة الحقول المطلوبة','error');return;}
+  if(slug.length < 2){showToast('اسم الرابط لازم يكون حرفين على الأقل','error');return;}
+
+  // Check uniqueness
+  const slugExists = restaurants.find(r => r.slug === slug && r.id !== editingId);
+  const userExists = restaurants.find(r => r.username === user && r.id !== editingId);
+  if(userExists){showToast('اسم المستخدم مستخدم بالفعل','error');return;}
+  if(slugExists){showToast('اسم الرابط ده مستخدم بالفعل، اختر اسم تاني','error');return;}
+
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'جاري الحفظ...';
+
+  try {
+    const data = {
+      name,
+      username: user,
+      password: pass,
+      slug,
+      phone: document.getElementById('restPhone').value.trim(),
+      desc: document.getElementById('restDesc').value.trim(),
+      type: currentType,
+      duration: document.getElementById('restDuration').value,
+      logo: logoData || null,
+      createdAt: new Date().toLocaleDateString('ar-EG'),
+      categories: [],
+      products: [],
+      banners: [],
+      orders_list: [],
+      reviews: [],
+      customers: [],
+      social: {},
+      settings: {acceptOrders: true, showPrices: true, requireRegistration: false}
+    };
+
+    if(editingId){
+      if(!logoData) delete data.logo;
+      else data.logo = logoData;
+      await db.collection('restaurants').doc(editingId).update(data);
+      showToast('تم تحديث بيانات المطعم','success');
+    } else {
+      await db.collection('restaurants').add(data);
+      showToast('تم إنشاء المنيو بنجاح','success');
+    }
+
+    closeModal('createModal');
+    editingId = null;
+  } catch(err){
+    showToast('خطأ في الحفظ: '+err.message,'error');
+    console.error(err);
+  }
+
+  saveBtn.disabled = false;
+  saveBtn.textContent = editingId ? 'حفظ التعديلات' : 'حفظ وإنشاء المنيو';
+}
+
+function renderTable(){
+  const tbody = document.getElementById('restaurantsBody');const empty = document.getElementById('emptyState');
+  if(!restaurants.length){tbody.innerHTML = '';empty.style.display = 'block';return;}
+  empty.style.display = 'none';
+  tbody.innerHTML = restaurants.map(r => `
+    <tr>
+      <td><div style="display:flex;align-items:center;gap:12px">${r.logo?`<img src="${r.logo}" class="rest-logo">`:`<div class="rest-logo-placeholder">${r.name.charAt(0)}</div>`}
+        <div><div style="font-weight:700">${r.name}</div><div style="font-size:.78rem;color:var(--text2)">${r.phone||''}</div></div></div></td>
+      <td><span class="badge badge-orange">دليفري</span></td>
+      <td><div style="font-size:.82rem"><div>${r.username} / ${r.password}</div></div></td>
+      <td style="font-size:.82rem;color:var(--text2)">${r.createdAt||''}</td>
+      <td><span class="badge badge-green">نشط</span></td>
+      <td><div class="action-btns">
+        <button class="btn-sm btn-view" onclick="showLinks('${r.id}')">روابط</button>
+        <button class="btn-sm btn-qr" onclick="showQR('${r.id}')">QR</button>
+        <button class="btn-sm btn-edit" onclick="openEditModal('${r.id}')">تعديل</button>
+        <button class="btn-sm btn-del" onclick="deleteRest('${r.id}')">حذف</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+async function deleteRest(id){
+  if(!confirm('حذف هذا المطعم؟ سيتم حذف جميع البيانات المرتبطة به.')) return;
+  try {
+    // Delete subcollections
+    const subCols = ['categories','products','banners','orders','reviews','customers'];
+    for(const col of subCols){
+      const snap = await db.collection('restaurants').doc(id).collection(col).get();
+      const batch = db.batch();
+      snap.forEach(doc => batch.delete(doc.ref));
+      if(snap.size > 0) await batch.commit();
+    }
+    await db.collection('restaurants').doc(id).delete();
+    showToast('تم حذف المطعم','error');
+  } catch(err){
+    showToast('خطأ في الحذف: '+err.message,'error');
+  }
+}
+
+async function showLinks(id){
+  const r = restaurants.find(x=>x.id===id);if(!r) return;
+  const base = location.origin;
+  const slug = r.slug || r.username;
+  const menuUrl = `${base}/${slug}`;const dashUrl = `${base}/dashboard.html?r=${slug}`;
+  document.getElementById('linksContent').innerHTML = `
+    <div class="links-box"><h4 style="margin-bottom:14px;font-weight:700">روابط المطعم: ${r.name}</h4>
+      <div class="link-row"><span class="link-label">صفحة المنيو:</span><div class="link-val">${menuUrl}</div><button class="btn-copy" onclick="copyText('${menuUrl}')">نسخ</button></div>
+      <div class="link-row"><span class="link-label">لوحة التحكم:</span><div class="link-val">${dashUrl}</div><button class="btn-copy" onclick="copyText('${dashUrl}')">نسخ</button></div>
+    </div>
+    <div class="creds-box"><h4>بيانات دخول صاحب المطعم</h4>
+      <div class="cred-row"><span class="cred-key">اسم المستخدم</span><span class="cred-val">${r.username}</span></div>
+      <div class="cred-row"><span class="cred-key">كلمة المرور</span><span class="cred-val">${r.password}</span></div>
+      <div class="cred-row"><span class="cred-key">اسم الرابط</span><span class="cred-val">${slug}</span></div>
+      <div class="cred-row"><span class="cred-key">نوع الخدمة</span><span class="cred-val">دليفري</span></div>
+    </div>
+    <div class="links-box" style="text-align:center;margin-top:14px">
+      <h4 style="margin-bottom:12px;font-weight:700">كود QR للمنيو</h4>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=${encodeURIComponent(menuUrl)}" style="width:200px;height:200px;border-radius:10px;border:2px solid var(--border);display:block;margin:0 auto" alt="QR">
+      <div style="margin-top:10px"><button class="btn-copy" onclick="window.open('https://api.qrserver.com/v1/create-qr-code/?size=600x600&format=png&data=${encodeURIComponent(menuUrl)}','_blank')">💾 تحميل QR</button></div>
+    </div>`;
+  document.getElementById('linksModal').classList.add('active');
+}
+
+function copyText(text){navigator.clipboard.writeText(text).then(()=>showToast('تم النسخ','success'));}
+
+function showQR(id){
+  const r = restaurants.find(x=>x.id===id);if(!r) return;
+  const base = location.origin;
+  const slug = r.slug || r.username;
+  window.open(base+'/qr.html?r='+slug,'_blank');
+}
+
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+</script>
+
+<div class="loading-overlay" id="loadingOverlay" style="display:none">
+  <div class="loading-spinner"></div>
+  <p style="font-size:.85rem;color:var(--text2)">جاري التحميل...</p>
+</div>
+</body>
+</html>

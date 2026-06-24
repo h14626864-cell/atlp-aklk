@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>تتبع الطلب</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{font-family:'Tajawal',sans-serif;background:#f5f5f5;color:#1a1a1a;line-height:1.5;overflow-x:hidden;min-height:100vh}
+img{display:block;max-width:100%}
+
+/* HEADER */
+.dt-header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(255,255,255,.92);
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(0,0,0,.06);
+  padding:14px 20px;
+  display:flex;align-items:center;gap:12px;
+}
+.dt-back{
+  width:36px;height:36px;border-radius:50%;background:#f5f5f5;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.2rem;color:#333;cursor:pointer;border:none;
+  transition:background .15s;
+}
+.dt-back:hover{background:#eee}
+.dt-header-title{font-size:1.05rem;font-weight:800;color:#1a1a1a}
+
+/* LOADING */
+.dt-loading{
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:14px;padding:80px 20px;
+}
+.dt-spinner{width:36px;height:36px;border:3px solid #eee;border-top-color:#ff6b2b;border-radius:50%;animation:dtspin .7s linear infinite}
+@keyframes dtspin{to{transform:rotate(360deg)}}
+
+/* ERROR */
+.dt-error{
+  text-align:center;padding:60px 20px;
+}
+.dt-error-icon{
+  width:60px;height:60px;border-radius:50%;background:#fef2f2;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;color:#ef4444;margin:0 auto 16px;
+}
+.dt-error h2{font-size:1.1rem;font-weight:800;color:#333;margin-bottom:8px}
+.dt-error p{font-size:.88rem;color:#888;max-width:300px;margin:0 auto;line-height:1.7}
+
+/* MAIN CONTENT */
+.dt-content{max-width:600px;margin:0 auto;padding:16px}
+
+/* RESTAURANT CARD */
+.dt-rest-card{
+  background:#fff;border-radius:16px;padding:16px;
+  display:flex;align-items:center;gap:14px;
+  border:1px solid #f0f0f0;box-shadow:0 2px 8px rgba(0,0,0,.04);
+  margin-bottom:16px;
+}
+.dt-rest-logo{
+  width:48px;height:48px;border-radius:14px;overflow:hidden;
+  background:linear-gradient(135deg,#ff6b2b,#e8551a);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.3rem;color:#fff;font-weight:900;flex-shrink:0;
+}
+.dt-rest-logo img{width:100%;height:100%;object-fit:cover}
+.dt-rest-info{flex:1;min-width:0}
+.dt-rest-name{font-size:.95rem;font-weight:800;color:#1a1a1a}
+.dt-rest-meta{font-size:.78rem;color:#888;margin-top:2px}
+
+/* ORDER CARD */
+.dt-order-card{
+  background:#fff;border-radius:18px;overflow:hidden;
+  border:1px solid #f0f0f0;box-shadow:0 2px 12px rgba(0,0,0,.06);
+  margin-bottom:16px;
+}
+
+/* Status Timeline */
+.dt-status-bar{
+  padding:20px 18px;
+  background:linear-gradient(135deg,#1a1a2e,#2d2d44);
+  color:#fff;
+}
+.dt-status-label{font-size:.78rem;color:rgba(255,255,255,.5);font-weight:500;margin-bottom:6px}
+.dt-status-text{font-size:1.15rem;font-weight:900}
+.dt-status-time{font-size:.78rem;color:rgba(255,255,255,.4);margin-top:4px}
+
+.dt-timeline{display:flex;align-items:center;justify-content:space-between;padding:18px 14px 8px;gap:4px}
+.dt-tl-step{display:flex;flex-direction:column;align-items:center;flex:1;position:relative;z-index:1}
+.dt-tl-circle{
+  width:36px;height:36px;border-radius:50%;
+  background:#f0f0f0;color:#bbb;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.95rem;font-weight:700;
+  transition:all .4s;border:3px solid #f0f0f0;
+}
+.dt-tl-step.done .dt-tl-circle{background:#00b894;color:#fff;border-color:#00b894}
+.dt-tl-step.active .dt-tl-circle{background:#ff6b2b;color:#fff;border-color:#ff6b2b;box-shadow:0 0 0 4px rgba(255,107,43,.2);animation:dtPulse 2s infinite}
+@keyframes dtPulse{0%,100%{box-shadow:0 0 0 4px rgba(255,107,43,.2)}50%{box-shadow:0 0 0 8px rgba(255,107,43,.08)}}
+.dt-tl-label{font-size:.68rem;font-weight:600;color:#bbb;margin-top:6px;text-align:center}
+.dt-tl-step.done .dt-tl-label{color:#00b894}
+.dt-tl-step.active .dt-tl-label{color:#ff6b2b;font-weight:700}
+.dt-tl-line{
+  position:absolute;top:18px;left:-50%;right:50%;
+  height:3px;background:#f0f0f0;z-index:-1;
+  transition:background .4s;
+}
+.dt-tl-step:first-child .dt-tl-line{display:none}
+.dt-tl-step.done .dt-tl-line{background:#00b894}
+
+/* Order Info */
+.dt-order-info{padding:0 18px 18px}
+.dt-info-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;border-bottom:1px solid #f5f5f5;
+  font-size:.85rem;
+}
+.dt-info-row:last-child{border-bottom:none}
+.dt-info-label{color:#888;font-weight:500;display:flex;align-items:center;gap:6px}
+.dt-info-value{font-weight:700;color:#1a1a1a}
+.dt-info-value.primary{color:#ff6b2b;font-size:.95rem}
+
+/* Items */
+.dt-items-section{padding:0 18px 4px}
+.dt-items-title{font-size:.92rem;font-weight:800;margin-bottom:12px;color:#1a1a1a}
+.dt-item{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 0;border-bottom:1px solid #f8f8f8;
+}
+.dt-item:last-child{border-bottom:none}
+.dt-item-icon{
+  width:40px;height:40px;border-radius:10px;
+  background:#fff4ed;color:#ff6b2b;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;flex-shrink:0;
+}
+.dt-item-info{flex:1;min-width:0}
+.dt-item-name{font-size:.85rem;font-weight:700;color:#1a1a1a}
+.dt-item-variant{font-size:.72rem;color:#999;margin-top:1px}
+.dt-item-right{text-align:left;flex-shrink:0}
+.dt-item-price{font-size:.85rem;font-weight:800;color:#1a1a1a}
+.dt-item-qty{font-size:.72rem;color:#999}
+
+/* Summary */
+.dt-summary{
+  margin:0 18px 16px;
+  background:#fafafa;border-radius:14px;padding:14px;
+  border:1px solid #f0f0f0;
+}
+.dt-summary-row{
+  display:flex;justify-content:space-between;padding:5px 0;
+  font-size:.83rem;color:#666;
+}
+.dt-summary-total{
+  display:flex;justify-content:space-between;padding-top:10px;
+  margin-top:8px;border-top:2px dashed #e0e0e0;
+  font-size:1.05rem;font-weight:900;color:#1a1a1a;
+}
+.dt-summary-total span:last-child{color:#ff6b2b}
+
+/* ALL ORDERS LIST */
+.dt-all-orders{
+  margin-top:6px;
+}
+.dt-all-orders-title{
+  font-size:.95rem;font-weight:800;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.dt-all-orders-title .count{
+  background:#fff4ed;color:#ff6b2b;
+  padding:2px 10px;border-radius:20px;
+  font-size:.75rem;font-weight:700;
+}
+.dt-mini-order{
+  background:#fff;border-radius:14px;padding:14px 16px;
+  border:1px solid #f0f0f0;margin-bottom:10px;
+  display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;transition:all .15s;
+  box-shadow:0 1px 4px rgba(0,0,0,.03);
+}
+.dt-mini-order:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.dt-mini-order.active-order{border-color:#ff6b2b;background:#fff9f5}
+.dt-mini-left{display:flex;flex-direction:column;gap:3px}
+.dt-mini-id{font-size:.85rem;font-weight:800;color:#1a1a1a}
+.dt-mini-time{font-size:.72rem;color:#999}
+.dt-mini-right{text-align:left}
+.dt-mini-total{font-size:.92rem;font-weight:900;color:#ff6b2b}
+.dt-mini-status{
+  font-size:.72rem;font-weight:700;
+  padding:2px 10px;border-radius:20px;
+  margin-top:4px;display:inline-block;
+}
+.dt-mini-status.pending{background:#fffbeb;color:#d97706}
+.dt-mini-status.preparing{background:#ffedd5;color:#ea580c}
+.dt-mini-status.ready{background:#d1fae5;color:#059669}
+.dt-mini-status.done{background:#f3f4f6;color:#6b7280}
+
+/* NOTES */
+.dt-notes{
+  margin:0 18px 16px;
+  background:#fffbeb;border-radius:12px;padding:12px 14px;
+  border:1px solid #fde68a;
+  font-size:.83rem;color:#92400e;
+}
+
+/* EMPTY */
+.dt-empty{
+  text-align:center;padding:60px 20px;color:#ccc;
+}
+.dt-empty-icon{font-size:3rem;margin-bottom:12px;opacity:.5}
+.dt-empty p{font-size:.88rem}
+
+/* TOAST */
+.dt-toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);
+  padding:11px 24px;border-radius:50px;font-size:.85rem;
+  z-index:99999;white-space:nowrap;
+  box-shadow:0 6px 24px rgba(0,0,0,.2);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .3s ease;
+  background:#1a1a1a;color:#fff;opacity:0;pointer-events:none;
+}
+.dt-toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.dt-toast.ok{background:#00b894}
+.dt-toast.err{background:#ef4444}
+
+@media(max-width:400px){
+  .dt-tl-circle{width:30px;height:30px;font-size:.8rem}
+  .dt-tl-label{font-size:.62rem}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="dt-loading">
+    <div class="dt-spinner"></div>
+    <p style="font-size:.85rem;color:#999">جاري تحميل بيانات الطلب...</p>
+  </div>
+</div>
+
+<div class="dt-toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC-02WpAmx1IZxPH333vhtCz6iJaqDWnq0",
+  authDomain: "atlp-8dd0a.firebaseapp.com",
+  projectId: "atlp-8dd0a",
+  storageBucket: "atlp-8dd0a.firebasestorage.app",
+  messagingSenderId: "566593290431",
+  appId: "1:566593290431:web:b69710081ecdd38fbe860a",
+  measurementId: "G-QJV3XD7Q3S"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+</script>
+
+<script>
+const QS = new URLSearchParams(location.search);
+const restSlug = QS.get('r') || QS.get('id') || (location.pathname.replace(/^\/+|\/+$/g,'').split('/')[0] || null);
+const customerPhone = QS.get('phone') || null;
+
+let restId = null;
+let R = null;
+let allOrders = [];
+let currentOrderId = null;
+let unsub = null;
+
+const STATUS_MAP = {
+  pending: { label: 'قيد الانتظار', icon: '⏳', step: 0 },
+  preparing: { label: 'جاري التحضير', icon: '🔥', step: 1 },
+  ready: { label: 'جاهز للتسليم', icon: '✅', step: 2 },
+  done: { label: 'تم التسليم', icon: '📦', step: 3 }
+};
+
+/* ═══════ TOAST ═══════ */
+let toastTimer = null;
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+  t.textContent = msg;
+  t.className = 'dt-toast ' + (type || '');
+  t.classList.remove('show');
+  requestAnimationFrame(() => { requestAnimationFrame(() => { t.classList.add('show'); }); });
+  toastTimer = setTimeout(() => { t.classList.remove('show'); toastTimer = null; }, 3000);
+}
+
+/* ═══════ ESCAPE HTML ═══════ */
+function esc(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+/* ═══════ INIT ═══════ */
+function init() {
+  if (!restSlug) {
+    showError('رابط غير صالح - يرجى التأكد من الرابط');
+    return;
+  }
+
+  // Find restaurant
+  db.collection('restaurants').where('slug', '==', restSlug).limit(1).get().then(snap => {
+    if (snap.empty) return db.collection('restaurants').where('username', '==', restSlug).limit(1).get();
+    return Promise.resolve(snap);
+  }).then(snap => {
+    if (!snap || snap.empty) {
+      return db.collection('restaurants').doc(restSlug).get().then(doc => {
+        if (doc.exists) return { docs: [doc] };
+        return { docs: [] };
+      });
+    }
+    return snap;
+  }).then(snap => {
+    if (!snap || !snap.docs || snap.docs.length === 0) {
+      showError('المطعم غير موجود');
+      return;
+    }
+
+    const doc = snap.docs[0];
+    R = { id: doc.id, ...doc.data() };
+    restId = R.id;
+    document.title = 'تتبع الطلب - ' + (R.name || '');
+
+    // Get orders from localStorage
+    loadLocalOrders();
+
+    // Also try to get orders from Firestore if we have phone
+    if (customerPhone) {
+      const phoneOrders = (R.orders_list || []).filter(o => o.phone === customerPhone);
+      phoneOrders.forEach(fo => {
+        const exists = allOrders.find(lo => lo.id === fo.id);
+        if (!exists) allOrders.push(fo);
+      });
+    }
+
+    if (!allOrders.length) {
+      showError('لا يوجد طلبات لهذا الرقم');
+      return;
+    }
+
+    // Sort by time descending (latest first)
+    allOrders.sort((a, b) => {
+      const ta = a.time || '';
+      const tb = b.time || '';
+      return ta > tb ? -1 : ta < tb ? 1 : 0;
+    });
+
+    // Show latest order
+    currentOrderId = allOrders[0].id;
+
+    // Check if a specific order was requested
+    const specificOrder = QS.get('order');
+    if (specificOrder) {
+      const found = allOrders.find(o => o.id === specificOrder);
+      if (found) currentOrderId = specificOrder;
+    }
+
+    renderPage();
+
+    // Real-time listener
+    if (unsub) unsub();
+    unsub = db.collection('restaurants').doc(restId).onSnapshot(doc => {
+      if (!doc.exists) return;
+      const newData = { id: doc.id, ...doc.data() };
+      R = newData;
+
+      // Merge new orders from Firestore
+      const serverOrders = newData.orders_list || [];
+      if (customerPhone) {
+        const phoneOrders = serverOrders.filter(o => o.phone === customerPhone);
+        phoneOrders.forEach(fo => {
+          const idx = allOrders.findIndex(lo => lo.id === fo.id);
+          if (idx >= 0) {
+            // Update existing order (status may have changed)
+            allOrders[idx] = fo;
+          } else {
+            allOrders.push(fo);
+          }
+        });
+      }
+
+      // Also update from localStorage orders that match
+      updateLocalOrders(serverOrders);
+
+      // Re-sort
+      allOrders.sort((a, b) => {
+        const ta = a.time || '';
+        const tb = b.time || '';
+        return ta > tb ? -1 : ta < tb ? 1 : 0;
+      });
+
+      renderPage();
+    });
+  }).catch(err => {
+    showError('خطأ في تحميل البيانات: ' + err.message);
+    console.error(err);
+  });
+}
+
+/* ═══════ LOCAL STORAGE ═══════ */
+function getLocalKey() {
+  return 'emenu_orders_' + (R ? R.id : restSlug);
+}
+
+function loadLocalOrders() {
+  try {
+    const stored = localStorage.getItem(getLocalKey());
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        allOrders = parsed;
+      }
+    }
+  } catch (e) {}
+}
+
+function saveLocalOrders() {
+  try {
+    localStorage.setItem(getLocalKey(), JSON.stringify(allOrders));
+  } catch (e) {}
+}
+
+function updateLocalOrders(serverOrders) {
+  // Update local orders with latest status from server
+  let changed = false;
+  allOrders.forEach(lo => {
+    const serverVersion = serverOrders.find(so => so.id === lo.id);
+    if (serverVersion && serverVersion.status !== lo.status) {
+      lo.status = serverVersion.status;
+      changed = true;
+    }
+  });
+  if (changed) saveLocalOrders();
+}
+
+/* ═══════ RENDER ═══════ */
+function renderPage() {
+  const app = document.getElementById('app');
+  const currentOrder = allOrders.find(o => o.id === currentOrderId) || allOrders[0];
+  if (!currentOrder) { showError('لا يوجد طلبات'); return; }
+
+  const statusInfo = STATUS_MAP[currentOrder.status] || STATUS_MAP.pending;
+  const subtotal = (currentOrder.items || []).reduce((a, i) => a + (i.price * i.qty), 0);
+  const deliveryFee = currentOrder.deliveryFee != null ? currentOrder.deliveryFee : 0;
+
+  let html = '';
+
+  // Header
+  html += `<div class="dt-header">
+    <button class="dt-back" onclick="history.back()">&#8594;</button>
+    <div class="dt-header-title">تتبع الطلب</div>
+  </div>`;
+
+  html += '<div class="dt-content">';
+
+  // Restaurant card
+  html += `<div class="dt-rest-card">
+    <div class="dt-rest-logo">${R.logo ? `<img src="${esc(R.logo)}">` : esc((R.name || 'A').charAt(0))}</div>
+    <div class="dt-rest-info">
+      <div class="dt-rest-name">${esc(R.name || 'المطعم')}</div>
+      <div class="dt-rest-meta">${R.phone ? '📞 ' + esc(R.phone) : ''}${R.duration ? '  •  ⏱ ' + esc(R.duration) + ' دقيقة' : ''}</div>
+    </div>
+  </div>`;
+
+  // Current Order Card
+  html += '<div class="dt-order-card">';
+
+  // Status bar
+  html += `<div class="dt-status-bar">
+    <div class="dt-status-label">حالة الطلب</div>
+    <div class="dt-status-text">${statusInfo.icon} ${statusInfo.label}</div>
+    ${currentOrder.time ? `<div class="dt-status-time">${esc(currentOrder.time)}</div>` : ''}
+  </div>`;
+
+  // Timeline
+  const steps = [
+    { key: 'pending', label: 'انتظار', icon: '⏳' },
+    { key: 'preparing', label: 'تحضير', icon: '🔥' },
+    { key: 'ready', label: 'جاهز', icon: '✅' },
+    { key: 'done', label: 'تسليم', icon: '📦' }
+  ];
+  const currentStep = statusInfo.step;
+
+  html += '<div class="dt-timeline">';
+  steps.forEach((s, i) => {
+    let cls = '';
+    if (i < currentStep) cls = 'done';
+    else if (i === currentStep) cls = 'active';
+    html += `<div class="dt-tl-step ${cls}">
+      <div class="dt-tl-circle">${i < currentStep ? '✓' : s.icon}</div>
+      <div class="dt-tl-label">${s.label}</div>
+      <div class="dt-tl-line"></div>
+    </div>`;
+  });
+  html += '</div>';
+
+  // Order info rows
+  html += '<div class="dt-order-info">';
+  html += `<div class="dt-info-row"><span class="dt-info-label">📋 رقم الطلب</span><span class="dt-info-value">${esc(currentOrder.id)}</span></div>`;
+  html += `<div class="dt-info-row"><span class="dt-info-label">👤 الاسم</span><span class="dt-info-value">${esc(currentOrder.customerName)}</span></div>`;
+  html += `<div class="dt-info-row"><span class="dt-info-label">📱 الهاتف</span><span class="dt-info-value">${esc(currentOrder.phone)}</span></div>`;
+  if (currentOrder.address) {
+    html += `<div class="dt-info-row"><span class="dt-info-label">📍 العنوان</span><span class="dt-info-value">${esc(currentOrder.address)}</span></div>`;
+  }
+  if (currentOrder.table) {
+    html += `<div class="dt-info-row"><span class="dt-info-label">🪑 الطاولة</span><span class="dt-info-value">${esc(currentOrder.table)}</span></div>`;
+  }
+  html += `<div class="dt-info-row"><span class="dt-info-label">🕐 الوقت</span><span class="dt-info-value">${esc(currentOrder.time || '—')}</span></div>`;
+  html += '</div>';
+
+  // Items
+  html += '<div class="dt-items-section">';
+  html += `<div class="dt-items-title">🧾 تفاصيل الطلب</div>`;
+  (currentOrder.items || []).forEach(item => {
+    html += `<div class="dt-item">
+      <div class="dt-item-icon">🍽</div>
+      <div class="dt-item-info">
+        <div class="dt-item-name">${esc(item.name)}</div>
+        ${item.size ? `<div class="dt-item-variant">📏 ${esc(item.size)}</div>` : ''}
+        ${(item.extras && item.extras.length) ? `<div class="dt-item-variant">➕ ${esc(item.extras.join('، '))}</div>` : ''}
+      </div>
+      <div class="dt-item-right">
+        <div class="dt-item-price">${(item.price * item.qty).toFixed(2)} ج.م</div>
+        <div class="dt-item-qty">× ${item.qty}</div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+
+  // Summary
+  html += `<div class="dt-summary">
+    <div class="dt-summary-row"><span>المجموع الفرعي</span><span>${subtotal.toFixed(2)} ج.م</span></div>`;
+  if (deliveryFee > 0) {
+    html += `<div class="dt-summary-row"><span>🛵 رسوم التوصيل</span><span>${deliveryFee.toFixed(2)} ج.م</span></div>`;
+  }
+  const grandTotal = currentOrder.total != null ? currentOrder.total : (subtotal + deliveryFee);
+  html += `<div class="dt-summary-total"><span>الإجمالي</span><span>${grandTotal.toFixed(2)} ج.م</span></div>`;
+  html += '</div>';
+
+  // Notes
+  if (currentOrder.notes) {
+    html += `<div class="dt-notes">📝 ${esc(currentOrder.notes)}</div>`;
+  }
+
+  html += '</div>'; // end dt-order-card
+
+  // All orders list (if more than 1)
+  if (allOrders.length > 1) {
+    html += '<div class="dt-all-orders">';
+    html += `<div class="dt-all-orders-title">كل طلباتك <span class="count">${allOrders.length}</span></div>`;
+    allOrders.forEach(o => {
+      const os = STATUS_MAP[o.status] || STATUS_MAP.pending;
+      const isActive = o.id === currentOrderId;
+      const oTotal = o.total != null ? o.total : ((o.items || []).reduce((a, i) => a + (i.price * i.qty), 0) + (o.deliveryFee || 0));
+      html += `<div class="dt-mini-order ${isActive ? 'active-order' : ''}" onclick="switchOrder('${o.id}')">
+        <div class="dt-mini-left">
+          <div class="dt-mini-id">${esc(o.id)}</div>
+          <div class="dt-mini-time">${esc(o.time || '')}</div>
+        </div>
+        <div class="dt-mini-right">
+          <div class="dt-mini-total">${oTotal.toFixed(0)} ج.م</div>
+          <span class="dt-mini-status ${o.status}">${os.label}</span>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  html += '</div>'; // end dt-content
+
+  app.innerHTML = html;
+}
+
+function switchOrder(orderId) {
+  currentOrderId = orderId;
+  renderPage();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showError(msg) {
+  document.getElementById('app').innerHTML = `
+    <div class="dt-header">
+      <button class="dt-back" onclick="history.back()">&#8594;</button>
+      <div class="dt-header-title">تتبع الطلب</div>
+    </div>
+    <div class="dt-error">
+      <div class="dt-error-icon">!</div>
+      <h2>فشل التحميل</h2>
+      <p>${esc(msg)}</p>
+    </div>`;
+}
+
+/* ═══════ SAFE INIT ═══════ */
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  try { init(); } catch (e) { showError(e.message); }
+}
+</script>
+</body>
+</html>

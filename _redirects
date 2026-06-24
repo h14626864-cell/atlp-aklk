@@ -1,0 +1,6 @@
+/index.html      /index.html        200
+/dashboard.html  /dashboard.html    200
+/qr.html         /qr.html           200
+/details.html    /details.html      200
+/details/:slug   /_details.html?r=:slug  200
+/:slug           /_menu.html?r=:slug  200

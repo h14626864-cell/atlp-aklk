@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<script>
+const qs = new URLSearchParams(location.search);
+const slug = qs.get('r') || qs.get('id');
+if(slug){
+  location.replace('/details/' + slug + (qs.toString() ? '?' + new URLSearchParams({r:slug,phone:qs.get('phone')||'',order:qs.get('order')||''}).toString() : ''));
+} else {
+  location.replace('/');
+}
+</script>
+</head>
+</html>

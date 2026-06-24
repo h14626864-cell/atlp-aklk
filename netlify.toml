@@ -1,0 +1,32 @@
+# Static files pass-through
+[[redirects]]
+  from = "/index.html"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard.html"
+  to = "/dashboard.html"
+  status = 200
+
+[[redirects]]
+  from = "/qr.html"
+  to = "/qr.html"
+  status = 200
+
+[[redirects]]
+  from = "/details.html"
+  to = "/details.html"
+  status = 200
+
+# Clean URL → serves _details.html internally (browser shows /details/slug?phone=...)
+[[redirects]]
+  from = "/details/:slug"
+  to = "/_details.html?r=:slug"
+  status = 200
+
+# Clean URL → serves _menu.html internally (browser shows /slug)
+[[redirects]]
+  from = "/:slug"
+  to = "/_menu.html?r=:slug"
+  status = 200
