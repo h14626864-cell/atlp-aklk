@@ -1004,6 +1004,7 @@ img{display:block;max-width:100%}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyC-02WpAmx1IZxPH333vhtCz6iJaqDWnq0",
@@ -1012,11 +1013,13 @@ const firebaseConfig = {
   storageBucket: "atlp-8dd0a.firebasestorage.app",
   messagingSenderId: "566593290431",
   appId: "1:566593290431:web:b69710081ecdd38fbe860a",
-  measurementId: "G-QJV3XD7Q3S"
+  measurementId: "G-QJV3XD7Q3S",
+  databaseURL: "https://atlp-8dd0a-default-rtdb.firebaseio.com"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const storage = firebase.storage();
+const rtdb = firebase.database();
 </script>
 
 <script>
@@ -1158,11 +1161,14 @@ function init(){
       buildPage();
       buildSlider();
 
-      // Real-time listener for updates
+      // Real-time listener للمنيو والمنتجات من Firestore
       if(unsub) unsub();
       unsub = db.collection('restaurants').doc(restId).onSnapshot(doc => {
         if(!doc.exists) return;
+        const prevOrders = R.orders_list || [];
         R = {id: doc.id, ...doc.data()};
+        // الحفاظ على الطلبات المحملة من RTDB
+        R.orders_list = prevOrders;
         if(!R.reviews)R.reviews=[];
         if(!R.categories)R.categories=[];
         if(!R.products)R.products=[];
@@ -1170,6 +1176,12 @@ function init(){
         normalizeProductOptions();
         rebuildContent();
         buildSlider();
+      });
+
+      // Real-time listener للطلبات من RTDB (عشان العميل يشوف حالة طلبه)
+      rtdb.ref('orders/' + restId).orderByChild('time').on('value', snap => {
+        const rawOrders = snap.val();
+        R.orders_list = rawOrders ? Object.values(rawOrders) : [];
       });
     }).catch(err => {
       showError('خطأ في تحميل البيانات: '+err.message);
@@ -1375,16 +1387,14 @@ function saveProfile(){
     if(pass)customers[custIdx].password=pass;
   }
 
-  // Also update in orders_list
+  // تحديث اسم العميل ورقمه في الطلبات الموجودة على RTDB
   const orders=R.orders_list||[];
-  orders.forEach(o=>{
-    if(o.customerId===currentUser.id||o.phone===currentUser.phone){
-      o.customerName=name;
-      o.phone=phone;
-    }
-  });
+  const updatePromises=orders
+    .filter(o=>o.customerId===currentUser.id||o.phone===currentUser.phone)
+    .map(o=>rtdb.ref('orders/'+restId+'/'+o.id).update({customerName:name,phone:phone}).catch(e=>console.warn('rtdb order update failed:',e)));
+  Promise.all(updatePromises).catch(e=>console.warn('rtdb batch update failed:',e));
 
-  db.collection('restaurants').doc(restId).update({customers:customers,orders_list:orders}).then(()=>{
+  db.collection('restaurants').doc(restId).update({customers:customers}).then(()=>{
     R.customers=customers;
     R.orders_list=orders;
     currentUser.name=name;
@@ -2023,10 +2033,13 @@ function placeOrder(){
     time:new Date().toLocaleString('ar-EG')
   };
 
-  db.collection('restaurants').doc(restId).update({
-    orders_list: firebase.firestore.FieldValue.arrayUnion(order),
-    orders: firebase.firestore.FieldValue.increment(1)
-  }).then(()=>{
+  // رفع الطلب على Realtime Database (أسرع + ما يأثرش على حد الـ 1MB في Firestore)
+  rtdb.ref('orders/' + restId + '/' + order.id).set(order).then(()=>{
+    // تحديث عداد الطلبات فقط في Firestore
+    db.collection('restaurants').doc(restId).update({
+      orders: firebase.firestore.FieldValue.increment(1)
+    }).catch(e=>console.warn('orders counter update failed:',e));
+
     if(!R.orders_list) R.orders_list=[];
     R.orders_list.unshift(order);
     try{

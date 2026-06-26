@@ -245,6 +245,7 @@ img{display:block;max-width:100%}
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyC-02WpAmx1IZxPH333vhtCz6iJaqDWnq0",
@@ -253,10 +254,12 @@ const firebaseConfig = {
   storageBucket: "atlp-8dd0a.firebasestorage.app",
   messagingSenderId: "566593290431",
   appId: "1:566593290431:web:b69710081ecdd38fbe860a",
-  measurementId: "G-QJV3XD7Q3S"
+  measurementId: "G-QJV3XD7Q3S",
+  databaseURL: "https://atlp-8dd0a-default-rtdb.firebaseio.com"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const rtdb = firebase.database();
 </script>
 
 <script>
@@ -330,54 +333,25 @@ function init() {
     // Get orders from localStorage
     loadLocalOrders();
 
-    // Also try to get orders from Firestore if we have phone
-    if (customerPhone) {
-      const phoneOrders = (R.orders_list || []).filter(o => o.phone === customerPhone);
-      phoneOrders.forEach(fo => {
-        const exists = allOrders.find(lo => lo.id === fo.id);
-        if (!exists) allOrders.push(fo);
-      });
-    }
-
-    if (!allOrders.length) {
-      showError('لا يوجد طلبات لهذا الرقم');
-      return;
-    }
-
-    // Sort by time descending (latest first)
-    allOrders.sort((a, b) => {
-      const ta = a.time || '';
-      const tb = b.time || '';
-      return ta > tb ? -1 : ta < tb ? 1 : 0;
-    });
-
-    // Show latest order
-    currentOrderId = allOrders[0].id;
-
-    // Check if a specific order was requested
-    const specificOrder = QS.get('order');
-    if (specificOrder) {
-      const found = allOrders.find(o => o.id === specificOrder);
-      if (found) currentOrderId = specificOrder;
-    }
-
-    renderPage();
-
-    // Real-time listener
+    // Firestore listener للمنيو فقط (بيانات المطعم)
     if (unsub) unsub();
     unsub = db.collection('restaurants').doc(restId).onSnapshot(doc => {
       if (!doc.exists) return;
-      const newData = { id: doc.id, ...doc.data() };
-      R = newData;
+      R = { id: doc.id, ...doc.data() };
+      renderPage();
+    });
 
-      // Merge new orders from Firestore
-      const serverOrders = newData.orders_list || [];
+    // RTDB listener للطلبات (real-time tracking)
+    const ordersRef = rtdb.ref('orders/' + restId);
+    const handleRTDBOrders = (snap) => {
+      const rawOrders = snap.val();
+      const serverOrders = rawOrders ? Object.values(rawOrders) : [];
+
       if (customerPhone) {
         const phoneOrders = serverOrders.filter(o => o.phone === customerPhone);
         phoneOrders.forEach(fo => {
           const idx = allOrders.findIndex(lo => lo.id === fo.id);
           if (idx >= 0) {
-            // Update existing order (status may have changed)
             allOrders[idx] = fo;
           } else {
             allOrders.push(fo);
@@ -385,18 +359,42 @@ function init() {
         });
       }
 
-      // Also update from localStorage orders that match
       updateLocalOrders(serverOrders);
 
-      // Re-sort
       allOrders.sort((a, b) => {
         const ta = a.time || '';
         const tb = b.time || '';
         return ta > tb ? -1 : ta < tb ? 1 : 0;
       });
 
+      if (!allOrders.length) {
+        showError('لا يوجد طلبات لهذا الرقم');
+        return;
+      }
+
+      if (!currentOrderId) {
+        currentOrderId = allOrders[0].id;
+        const specificOrder = QS.get('order');
+        if (specificOrder && allOrders.find(o => o.id === specificOrder)) {
+          currentOrderId = specificOrder;
+        }
+      }
+
       renderPage();
-    });
+    };
+    ordersRef.on('value', handleRTDBOrders);
+
+    // عرض مؤقت من localStorage ريثما تيجي RTDB
+    if (!allOrders.length) {
+      showError('جاري تحميل بيانات طلبك...');
+    } else {
+      currentOrderId = allOrders[0].id;
+      const specificOrder = QS.get('order');
+      if (specificOrder && allOrders.find(o => o.id === specificOrder)) {
+        currentOrderId = specificOrder;
+      }
+      renderPage();
+    }
   }).catch(err => {
     showError('خطأ في تحميل البيانات: ' + err.message);
     console.error(err);
