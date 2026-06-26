@@ -159,6 +159,34 @@
     .topbar{padding:0 15px}
     .table-container{overflow-x:auto}
   }
+
+  .btn-limit{background:#fef3c7;color:#d97706;}
+  .limit-badge{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#fef3c7;color:#d97706;white-space:nowrap;}
+  .limit-badge.full{background:#fef2f2;color:var(--red);}
+  .limit-badge.ok{background:#ecfdf5;color:#059669;}
+  .limit-modal-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+  .limit-modal-row .form-group{margin-bottom:0;}
+  .current-usage{font-size:.78rem;color:var(--text2);margin-top:5px;background:#f5f5f5;border-radius:7px;padding:5px 10px;}
+
+  .fs-bar-wrap{background:#f0f0f0;border-radius:20px;height:8px;overflow:hidden;margin:8px 0 4px;min-width:120px;}
+  .fs-bar{height:100%;border-radius:20px;transition:width .4s;}
+  .fs-bar.ok{background:#00b894;}
+  .fs-bar.warn{background:#ffb830;}
+  .fs-bar.danger{background:#ef4444;}
+  .fs-size-label{font-size:.72rem;font-weight:700;color:var(--text2);}
+  .btn-fs{background:#eff6ff;color:#2563eb;}
+  /* Firestore modal */
+  .fs-modal-card{background:#fafafa;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;}
+  .fs-modal-card .fs-name{font-weight:800;font-size:.95rem;margin-bottom:10px;}
+  .fs-field-row{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;padding:4px 0;border-bottom:1px solid #f0f0f0;}
+  .fs-field-row:last-child{border-bottom:none;}
+  .fs-field-name{color:var(--text2);}
+  .fs-field-size{font-weight:700;}
+  .fs-total-row{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:.9rem;margin-top:10px;padding-top:10px;border-top:2px solid var(--border);}
+  .fs-pct{font-size:.75rem;padding:2px 8px;border-radius:20px;font-weight:700;}
+  .fs-pct.ok{background:#ecfdf5;color:#059669;}
+  .fs-pct.warn{background:#fffbeb;color:#d97706;}
+  .fs-pct.danger{background:#fef2f2;color:#dc2626;}
 </style>
 </head>
 <body>
@@ -464,7 +492,14 @@ function renderTable(){
   tbody.innerHTML = restaurants.map(r => `
     <tr>
       <td><div style="display:flex;align-items:center;gap:12px">${r.logo?`<img src="${r.logo}" class="rest-logo">`:`<div class="rest-logo-placeholder">${r.name.charAt(0)}</div>`}
-        <div><div style="font-weight:700">${r.name}</div><div style="font-size:.78rem;color:var(--text2)">${r.phone||''}</div></div></div></td>
+        <div><div style="font-weight:700">${r.name}</div><div style="font-size:.78rem;color:var(--text2)">${r.phone||''}</div>
+        <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap">
+          ${(()=>{const pl=r.limits?.products||0;const cl=r.limits?.categories||0;const pu=(r.products||[]).length;const cu=(r.categories||[]).length;
+            const pb=pl===0?'<span class="limit-badge ok">🍔 بلا حد</span>':(pu>=pl?'<span class="limit-badge full">🍔 '+pu+'/'+pl+' ممتلئ</span>':'<span class="limit-badge">🍔 '+pu+'/'+pl+'</span>');
+            const cb=cl===0?'<span class="limit-badge ok">📁 بلا حد</span>':(cu>=cl?'<span class="limit-badge full">📁 '+cu+'/'+cl+' ممتلئ</span>':'<span class="limit-badge">📁 '+cu+'/'+cl+'</span>');
+            return pb+cb;})()}
+        </div>
+        </div></div></td>
       <td><span class="badge badge-orange">دليفري</span></td>
       <td><div style="font-size:.82rem"><div>${r.username} / ${r.password}</div></div></td>
       <td style="font-size:.82rem;color:var(--text2)">${r.createdAt||''}</td>
@@ -472,6 +507,8 @@ function renderTable(){
       <td><div class="action-btns">
         <button class="btn-sm btn-view" onclick="showLinks('${r.id}')">روابط</button>
         <button class="btn-sm btn-qr" onclick="showQR('${r.id}')">QR</button>
+        <button class="btn-sm btn-fs" onclick="openFsSizeModal('${r.id}')">🗄 Firestore</button>
+        <button class="btn-sm btn-limit" onclick="openLimitModal('${r.id}')">⚡ ليميت</button>
         <button class="btn-sm btn-edit" onclick="openEditModal('${r.id}')">تعديل</button>
         <button class="btn-sm btn-del" onclick="deleteRest('${r.id}')">حذف</button>
       </div></td>
@@ -530,7 +567,214 @@ function showQR(id){
 }
 
 function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+
+let limitingId = null;
+function openLimitModal(id){
+  limitingId = id;
+  const r = restaurants.find(x => x.id === id);
+  if(!r) return;
+  document.getElementById('limitRestName').textContent = '🍽 ' + r.name;
+  document.getElementById('limitProducts').value = r.limits?.products || 0;
+  document.getElementById('limitCategories').value = r.limits?.categories || 0;
+  const prodCount = (r.products||[]).length;
+  const catCount = (r.categories||[]).length;
+  document.getElementById('limitProductsUsage').textContent = 'الحالي: ' + prodCount + ' منتج';
+  document.getElementById('limitCategoriesUsage').textContent = 'الحالي: ' + catCount + ' قسم';
+  document.getElementById('limitModal').classList.add('active');
+}
+async function saveLimit(){
+  if(!limitingId) return;
+  const products = parseInt(document.getElementById('limitProducts').value) || 0;
+  const categories = parseInt(document.getElementById('limitCategories').value) || 0;
+  const btn = document.querySelector('#limitModal .btn-primary');
+  btn.disabled = true; btn.textContent = 'جاري الحفظ...';
+  try{
+    await db.collection('restaurants').doc(limitingId).update({ limits: { products, categories } });
+    showToast('تم حفظ الليميت ✓','success');
+    closeModal('limitModal');
+  } catch(e){
+    showToast('خطأ: '+e.message,'error');
+  }
+  btn.disabled = false; btn.textContent = '💾 حفظ الليميت';
+}
+
+
+// ── Firestore document size estimator ──
+// Based on official Firestore size calculation rules
+function calcFirestoreSize(value, keyName) {
+  if (value === null || value === undefined) return 1; // null = 1 byte
+  if (typeof value === 'boolean') return 1;
+  if (typeof value === 'number') return 8;
+  if (typeof value === 'string') return new TextEncoder().encode(value).length + 1;
+  if (value instanceof Date) return 8;
+  if (Array.isArray(value)) {
+    return value.reduce((acc, v) => acc + calcFirestoreSize(v, ''), 0);
+  }
+  if (typeof value === 'object') {
+    let size = 0;
+    for (const k in value) {
+      size += new TextEncoder().encode(k).length + 1; // field name
+      size += calcFirestoreSize(value[k], k);          // field value
+    }
+    return size;
+  }
+  return 1;
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+function getPctClass(pct) {
+  if (pct >= 90) return 'danger';
+  if (pct >= 60) return 'warn';
+  return 'ok';
+}
+
+async function openFsSizeModal(id) {
+  document.getElementById('fsSizeContent').innerHTML = '<div style="color:var(--text2);font-size:.9rem;text-align:center;padding:20px;">⏳ جاري جلب البيانات وحساب الحجم...</div>';
+  document.getElementById('fsSizeModal').classList.add('active');
+
+  try {
+    const snap = await db.collection('restaurants').doc(id).get();
+    if (!snap.exists) { document.getElementById('fsSizeContent').innerHTML = '<p style="color:var(--red)">لم يُعثر على المطعم</p>'; return; }
+    const data = snap.data();
+    const r = restaurants.find(x => x.id === id);
+
+    const FS_MAX = 1048576; // 1 MiB
+
+    // Calculate per-field sizes
+    const fields = [
+      { label: '🍔 المنتجات (products)', key: 'products' },
+      { label: '📁 الأقسام (categories)', key: 'categories' },
+      { label: '📋 الطلبات (orders_list)', key: 'orders_list' },
+      { label: '⭐ التقييمات (reviews)', key: 'reviews' },
+      { label: '👥 العملاء (customers)', key: 'customers' },
+      { label: '🔗 السوشيال (social)', key: 'social' },
+      { label: '⚙️ الإعدادات (settings)', key: 'settings' },
+      { label: '🖼 اللوجو (logo)', key: 'logo' },
+      { label: '📝 بيانات أساسية', key: '__meta__' },
+    ];
+
+    // Overhead = document path
+    const docPath = `restaurants/${id}`;
+    let totalSize = new TextEncoder().encode(docPath).length + 16; // path + overhead
+
+    const fieldSizes = [];
+    let metaSize = 0;
+    const metaKeys = ['name','username','password','slug','phone','desc','type','duration','createdAt'];
+
+    for (const key in data) {
+      const fSize = new TextEncoder().encode(key).length + 1 + calcFirestoreSize(data[key], key);
+      if (metaKeys.includes(key)) {
+        metaSize += fSize;
+      } else {
+        const found = fields.find(f => f.key === key);
+        if (found) found._size = fSize;
+        else { /* unknown field, count in total */ }
+      }
+      totalSize += fSize;
+    }
+    // assign meta
+    const metaField = fields.find(f => f.key === '__meta__');
+    if (metaField) metaField._size = metaSize;
+
+    const pct = Math.min(100, (totalSize / FS_MAX) * 100);
+    const pctCls = getPctClass(pct);
+
+    // Build HTML
+    let rows = '';
+    for (const f of fields) {
+      const sz = f._size || 0;
+      if (!sz) continue;
+      const fpct = Math.min(100, (sz / FS_MAX) * 100);
+      const fcls = getPctClass(fpct);
+      rows += `<div class="fs-field-row">
+        <span class="fs-field-name">${f.label}</span>
+        <span class="fs-field-size ${fcls === 'danger' ? 'style="color:#dc2626"' : ''}">${formatBytes(sz)} <span style="color:var(--text2);font-weight:400">(${fpct.toFixed(1)}%)</span></span>
+      </div>`;
+    }
+
+    const remaining = FS_MAX - totalSize;
+    const statusMsg = pct >= 90
+      ? '🔴 خطر! الـ Document قريب من الحد الأقصى'
+      : pct >= 60
+      ? '🟡 تحذير — أكتر من 60% مستخدم'
+      : '🟢 كويس — مساحة كافية';
+
+    document.getElementById('fsSizeContent').innerHTML = `
+      <div class="fs-modal-card">
+        <div class="fs-name">🍽 ${r ? r.name : id}</div>
+        <div class="fs-bar-wrap" style="height:12px;margin-bottom:12px">
+          <div class="fs-bar ${pctCls}" style="width:${pct.toFixed(1)}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <span class="fs-size-label">${statusMsg}</span>
+          <span class="fs-pct ${pctCls}">${pct.toFixed(1)}%</span>
+        </div>
+        ${rows}
+        <div class="fs-total-row">
+          <span>الإجمالي</span>
+          <span>${formatBytes(totalSize)} / 1 MB</span>
+        </div>
+        <div style="font-size:.76rem;color:var(--text2);margin-top:8px;text-align:left">متبقي: ${formatBytes(remaining < 0 ? 0 : remaining)}</div>
+      </div>
+      <div style="font-size:.74rem;color:var(--text2);text-align:center">الحجم محسوب بناءً على قواعد Firestore الرسمية</div>
+    `;
+  } catch(e) {
+    document.getElementById('fsSizeContent').innerHTML = `<p style="color:var(--red);text-align:center">خطأ: ${e.message}</p>`;
+  }
+}
+
 </script>
+
+
+<!-- LIMIT MODAL -->
+<div class="modal-overlay" id="limitModal">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div class="modal-title">⚡ ضبط ليميت المطعم</div>
+      <button class="btn-close" onclick="closeModal('limitModal')">✕</button>
+    </div>
+    <div style="background:var(--primary-light);border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:.84rem;color:var(--primary);font-weight:600;" id="limitRestName"></div>
+    <div class="limit-modal-row">
+      <div class="form-group">
+        <label>🍔 ليميت المنتجات</label>
+        <input type="number" id="limitProducts" min="0" max="9999" placeholder="مثال: 30">
+        <div class="current-usage" id="limitProductsUsage"></div>
+      </div>
+      <div class="form-group">
+        <label>📁 ليميت الأقسام</label>
+        <input type="number" id="limitCategories" min="0" max="9999" placeholder="مثال: 10">
+        <div class="current-usage" id="limitCategoriesUsage"></div>
+      </div>
+    </div>
+    <div style="font-size:.78rem;color:var(--text2);margin-bottom:4px;">0 = مفيش حد (غير محدود)</div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('limitModal')">إلغاء</button>
+      <button class="btn-primary" onclick="saveLimit()">💾 حفظ الليميت</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- FIRESTORE SIZE MODAL -->
+<div class="modal-overlay" id="fsSizeModal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <div class="modal-title">🗄️ حجم Firestore Document</div>
+      <button class="btn-close" onclick="closeModal('fsSizeModal')">✕</button>
+    </div>
+    <div id="fsSizeContent" style="min-height:80px;display:flex;align-items:center;justify-content:center;">
+      <div style="color:var(--text2);font-size:.9rem;">جاري الحساب...</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" onclick="closeModal('fsSizeModal')">تم</button>
+    </div>
+  </div>
+</div>
 
 <div class="loading-overlay" id="loadingOverlay" style="display:none">
   <div class="loading-spinner"></div>
