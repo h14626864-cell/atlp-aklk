@@ -189,6 +189,13 @@
   .img-upload:hover{border-color:var(--primary);background:var(--primary-light)}
   .img-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}
   .img-preview{max-width:100%;max-height:150px;border-radius:8px;margin:0 auto;display:block}
+  .img-src-tabs{display:flex;gap:6px;margin-bottom:8px}
+  .img-src-tab{flex:1;padding:7px 10px;border-radius:8px;border:2px solid var(--border);background:#f5f5f5;font-size:.82rem;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;color:var(--text2)}
+  .img-src-tab.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary)}
+  .img-url-input{width:100%;border:2px solid var(--border);border-radius:10px;padding:9px 12px;font-size:.88rem;margin-bottom:8px;box-sizing:border-box;font-family:inherit;direction:ltr}
+  .img-url-input:focus{outline:none;border-color:var(--primary)}
+  .img-url-preview-wrap{text-align:center}
+  .img-url-error{font-size:.78rem;color:#e53935;margin-top:4px;display:none}
 
   /* TOGGLE SWITCH */
   .toggle-switch{position:relative;display:inline-flex;align-items:center;cursor:pointer}
@@ -784,7 +791,20 @@
         <span style="font-size:.86rem;font-weight:600">متاح</span>
       </div>
     </div>
-    <div class="form-g"><label>صورة المنتج</label><div class="img-upload" id="productImgBox"><input type="file" id="productImgInput" accept="image/*" onchange="handleProductImg(this)"><div id="productImgContent"><div style="font-size:1.8rem;margin-bottom:4px">📷</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة المنتج</p></div></div></div>
+    <div class="form-g"><label>صورة المنتج</label>
+      <div class="img-src-tabs">
+        <div class="img-src-tab active" id="productTabUpload" onclick="switchProductImgTab('upload')">📁 رفع من الجهاز</div>
+        <div class="img-src-tab" id="productTabUrl" onclick="switchProductImgTab('url')">🔗 رابط صورة</div>
+      </div>
+      <div id="productUploadSection">
+        <div class="img-upload" id="productImgBox"><input type="file" id="productImgInput" accept="image/*" onchange="handleProductImg(this)"><div id="productImgContent"><div style="font-size:1.8rem;margin-bottom:4px">📷</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة المنتج</p></div></div>
+      </div>
+      <div id="productUrlSection" style="display:none">
+        <input type="text" class="img-url-input" id="productImgUrl" placeholder="https://example.com/image.jpg" oninput="handleProductImgUrl(this.value)">
+        <div class="img-url-error" id="productImgUrlError">❌ تعذّر تحميل الصورة، تأكد من صحة الرابط</div>
+        <div class="img-url-preview-wrap"><img id="productImgUrlPreview" src="" alt="" class="img-preview" style="display:none" onload="onProductUrlImgLoad()" onerror="onProductUrlImgError()"></div>
+      </div>
+    </div>
     <div class="modal-footer"><button class="btn-cancel" onclick="closeModal('productModal')">إلغاء</button><button class="btn-save" onclick="saveProduct()">حفظ</button></div>
   </div>
 </div>
@@ -1255,14 +1275,56 @@ function openProductModal(id=null){
     document.getElementById('pDesc').value=p.desc||'';document.getElementById('pIcon').value=p.icon||'';
     document.getElementById('pAvailable').checked=p.available!==false;document.getElementById('pCat').value=p.categoryId||'';
     productImgData=p.image||null;
-    document.getElementById('productImgContent').innerHTML=p.image?`<img src="${p.image}" class="img-preview">`:'<div style="font-size:1.8rem;margin-bottom:4px">📷</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة</p>';
+    // Detect if stored image is a URL (not base64)
+    if(p.image && !p.image.startsWith('data:')){
+      switchProductImgTab('url');
+      document.getElementById('productImgUrl').value=p.image;
+      const prev=document.getElementById('productImgUrlPreview');prev.src=p.image;prev.style.display='block';
+      document.getElementById('productImgUrlError').style.display='none';
+    } else {
+      switchProductImgTab('upload');
+      document.getElementById('productImgContent').innerHTML=p.image?`<img src="${p.image}" class="img-preview">`:'<div style="font-size:1.8rem;margin-bottom:4px">📷</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة</p>';
+    }
   }else{
     document.getElementById('productModalTitle').textContent='+ إضافة منتج';
     document.getElementById('pName').value='';document.getElementById('pPrice').value='';document.getElementById('pDesc').value='';document.getElementById('pIcon').value='';
     document.getElementById('pAvailable').checked=true;document.getElementById('pCat').value='';
+    switchProductImgTab('upload');
     document.getElementById('productImgContent').innerHTML='<div style="font-size:1.8rem;margin-bottom:4px">📷</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة</p>';
   }
   document.getElementById('productModal').classList.add('active');
+}
+function switchProductImgTab(tab){
+  const isUpload=tab==='upload';
+  document.getElementById('productTabUpload').classList.toggle('active',isUpload);
+  document.getElementById('productTabUrl').classList.toggle('active',!isUpload);
+  document.getElementById('productUploadSection').style.display=isUpload?'block':'none';
+  document.getElementById('productUrlSection').style.display=isUpload?'none':'block';
+  if(isUpload){
+    // Clear URL state when switching to upload
+    if(!productImgData||typeof productImgData==='string'&&!productImgData.startsWith('data:')){productImgData=null;}
+  }else{
+    // Clear upload state when switching to URL
+    document.getElementById('productImgInput').value='';
+  }
+}
+function handleProductImgUrl(val){
+  const url=val.trim();
+  const prev=document.getElementById('productImgUrlPreview');
+  const err=document.getElementById('productImgUrlError');
+  if(!url){prev.style.display='none';prev.src='';err.style.display='none';productImgData=null;return;}
+  prev.src=url;prev.style.display='none';err.style.display='none';
+}
+function onProductUrlImgLoad(){
+  const url=document.getElementById('productImgUrl').value.trim();
+  document.getElementById('productImgUrlPreview').style.display='block';
+  document.getElementById('productImgUrlError').style.display='none';
+  productImgData=url;
+}
+function onProductUrlImgError(){
+  document.getElementById('productImgUrlPreview').style.display='none';
+  document.getElementById('productImgUrlError').style.display='block';
+  productImgData=null;
 }
 function compressImage(file,maxW,maxH,quality,callback){const reader=new FileReader();reader.onload=e=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>maxW||h>maxH){const ratio=Math.min(maxW/w,maxH/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);const compressed=canvas.toDataURL('image/jpeg',quality);callback(compressed);};img.src=e.target.result;};reader.readAsDataURL(file);}
 function handleProductImg(input){const file=input.files[0];if(!file)return;document.getElementById('productImgContent').innerHTML='<div style="font-size:.8rem;color:var(--text2);padding:10px">جاري ضغط الصورة...</div>';compressImage(file,800,800,0.75,compressed=>{productImgData=compressed;document.getElementById('productImgContent').innerHTML=`<img src="${productImgData}" class="img-preview">`;});}
