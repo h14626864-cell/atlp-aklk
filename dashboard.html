@@ -1467,13 +1467,15 @@ function handleProductImgUrl(val){
   const status=document.getElementById('productImgUrlStatus');
   const empty=document.getElementById('productImgUrlEmpty');
   if(!url){
-    productImgData=null;
     if(status)status.style.display='none';
     if(empty)empty.style.display='flex';
     return;
   }
-  productImgData=url;
-  if(status)status.style.display='flex';
+  if(url.startsWith('data:')){
+    if(status){status.style.display='flex';status.style.color='#e53e3e';status.textContent='❌ هذا ليس رابط — الصق رابط URL مباشر (يبدأ بـ https://)';}
+    return;
+  }
+  if(status){status.style.display='flex';status.style.color='#059669';status.textContent='✅ اللينك جاهز — سيتحفظ فوراً';}
   if(empty)empty.style.display='none';
 }
 function compressImage(file,maxW,maxH,quality,callback){const reader=new FileReader();reader.onload=e=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>maxW||h>maxH){const ratio=Math.min(maxW/w,maxH/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);const compressed=canvas.toDataURL('image/jpeg',quality);callback(compressed);};img.src=e.target.result;};reader.readAsDataURL(file);}
@@ -1529,7 +1531,7 @@ function saveProduct(){
   // الأولوية: لو في URL مكتوب → استخدمه مباشرة
   // لو مفيش URL → استخدم productImgData (base64 من الجهاز)
   const urlVal = document.getElementById('productImgUrl').value.trim();
-  const finalImg = urlVal || productImgData || null;
+  const finalImg = (urlVal && !urlVal.startsWith('data:')) ? urlVal : (productImgData || null);
 
   const saveBtn=document.querySelector('#productModal .btn-save');
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='جاري الحفظ...';}
@@ -1669,7 +1671,7 @@ function saveCat(){
   // الأولوية: لو في URL مكتوب → استخدمه مباشرة
   // لو مفيش URL → استخدم catImgData (base64 من الجهاز)
   const urlVal = document.getElementById('catImgUrl').value.trim();
-  const finalImg = urlVal || catImgData || null;
+  const finalImg = (urlVal && !urlVal.startsWith('data:')) ? urlVal : (catImgData || null);
 
   const saveBtn=document.querySelector('#catModal .btn-save');
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='جاري الحفظ...';}
@@ -1736,13 +1738,15 @@ function handleCatImgUrl(val){
   const status=document.getElementById('catImgUrlStatus');
   const empty=document.getElementById('catImgUrlEmpty');
   if(!url){
-    catImgData=null;
     if(status)status.style.display='none';
     if(empty)empty.style.display='flex';
     return;
   }
-  catImgData=url;
-  if(status)status.style.display='flex';
+  if(url.startsWith('data:')){
+    if(status){status.style.display='flex';status.style.color='#e53e3e';status.textContent='❌ هذا ليس رابط — الصق رابط URL مباشر (يبدأ بـ https://)';}
+    return;
+  }
+  if(status){status.style.display='flex';status.style.color='#059669';status.textContent='✅ اللينك جاهز — سيتحفظ فوراً';}
   if(empty)empty.style.display='none';
 }
 function deleteCat(id){if(!confirm('حذف هذا القسم؟'))return;db.collection('restaurants').doc(restId).collection('categories').doc(id).delete().then(()=>showToast('تم حذف القسم','error')).catch(e=>showToast('خطأ في الحذف','error'));}
