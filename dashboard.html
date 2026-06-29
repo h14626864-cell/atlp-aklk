@@ -185,13 +185,6 @@
   .btn-cancel{padding:10px 20px;border-radius:10px;background:#f5f5f5;font-weight:600;font-size:.88rem;color:var(--text2)}
   .btn-save{padding:10px 20px;border-radius:10px;background:var(--primary);color:#fff;font-weight:700;font-size:.88rem;box-shadow:0 3px 10px rgba(255,107,43,.2)}
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .img-upload{border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa;position:relative}
-  .img-upload:hover{border-color:var(--primary);background:var(--primary-light)}
-  .img-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}
-  .img-preview{max-width:100%;max-height:150px;border-radius:8px;margin:0 auto;display:block}
-  .img-src-tabs{display:flex;gap:6px;margin-bottom:8px}
-  .img-src-tab{flex:1;padding:7px 10px;border-radius:8px;border:2px solid var(--border);background:#f5f5f5;font-size:.82rem;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;color:var(--text2)}
-  .img-src-tab.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary)}
   .img-url-input{width:100%;border:2px solid var(--border);border-radius:10px;padding:9px 12px;font-size:.88rem;margin-bottom:8px;box-sizing:border-box;font-family:inherit;direction:ltr}
   .img-url-input:focus{outline:none;border-color:var(--primary)}
   .img-url-preview-wrap{text-align:center}
@@ -603,7 +596,7 @@
       <div class="page-section" id="sectionProducts">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px">
           <div style="font-size:1.05rem;font-weight:800">إدارة المنتجات</div>
-          <button onclick="openProductModal()" style="width:42px;height:42px;border-radius:50%;background:rgba(59,130,246,.15);color:#3b82f6;border:2px solid #3b82f6;font-size:1.45rem;display:flex;align-items:center;justify-content:center;transition:all .2s;backdrop-filter:blur(4px)" onmouseover="this.style.background='rgba(59,130,246,.28)'" onmouseout="this.style.background='rgba(59,130,246,.15)'">+</button>
+          <button class="btn-save" style="padding:9px 20px;border-radius:10px" onclick="openProductModal()">+ إضافة منتج</button>
         </div>
         <div class="limit-banner" id="productLimitBanner"></div>
         <div class="cards-grid" id="productsList"></div>
@@ -613,7 +606,7 @@
       <div class="page-section" id="sectionCategories">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px">
           <div style="font-size:1.05rem;font-weight:800">إدارة الأقسام</div>
-          <button onclick="openCatModal()" style="width:42px;height:42px;border-radius:50%;background:rgba(59,130,246,.15);color:#3b82f6;border:2px solid #3b82f6;font-size:1.45rem;display:flex;align-items:center;justify-content:center;transition:all .2s;backdrop-filter:blur(4px)" onmouseover="this.style.background='rgba(59,130,246,.28)'" onmouseout="this.style.background='rgba(59,130,246,.15)'">+</button>
+          <button class="btn-save" style="padding:9px 20px;border-radius:10px" onclick="openCatModal()">+ إضافة قسم</button>
         </div>
         <div class="limit-banner" id="catLimitBanner"></div>
         <div class="cards-grid" id="catsList"></div>
@@ -826,18 +819,12 @@
         <span style="font-size:.86rem;font-weight:600">متاح</span>
       </div>
     </div>
-    <div class="form-g"><label>صورة المنتج</label>
-      <div class="img-src-tabs">
-        <div class="img-src-tab active" id="productTabUpload" onclick="switchProductImgTab('upload')">📁 رفع من الجهاز</div>
-        <div class="img-src-tab" id="productTabUrl" onclick="switchProductImgTab('url')">🔗 رابط صورة</div>
-      </div>
-      <div id="productUploadSection">
-        <div class="img-upload" id="productImgBox"><input type="file" id="productImgInput" accept="image/*" onchange="handleProductImg(this)"><div id="productImgContent"><div style="font-size:1.8rem;margin-bottom:4px">📷</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة المنتج</p></div></div>
-      </div>
-      <div id="productUrlSection" style="display:none">
+    <div class="form-g"><label>🔗 رابط صورة المنتج</label>
+      <div id="productUrlSection">
         <input type="text" class="img-url-input" id="productImgUrl" placeholder="https://example.com/image.jpg" oninput="handleProductImgUrl(this.value)">
-        <div id="productImgUrlStatus" style="display:none;align-items:center;gap:6px;font-size:.82rem;font-weight:700;color:#059669;margin-bottom:6px">✅ اللينك جاهز — سيتحفظ فوراً</div>
-        <div id="productImgUrlEmpty" style="display:none;font-size:.82rem;color:var(--text2);margin-bottom:6px">📎 الصق رابط الصورة بالأعلى</div>
+        <div class="img-url-error" id="productImgUrlError">❌ تعذّر تحميل الصورة، تأكد من صحة الرابط</div>
+        <div style="display:none;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:#059669;margin-bottom:6px" id="productImgUrlTick">✅ اللينك شغال — هيتحفظ فوراً</div>
+        <div class="img-url-preview-wrap"><img id="productImgUrlPreview" src="" alt="" class="img-preview" referrerpolicy="no-referrer" style="display:none" onload="onProductUrlImgLoad()" onerror="onProductUrlImgError()"></div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn-cancel" onclick="closeModal('productModal')">إلغاء</button><button class="btn-save" onclick="saveProduct()">حفظ</button></div>
@@ -853,18 +840,12 @@
       <div class="form-g"><label>الأيقونة</label><input type="text" id="catIcon" placeholder="مثال: 🔥"></div>
     </div>
     <div class="form-g"><label>وصف القسم (اختياري)</label><input type="text" id="catDesc" placeholder="وصف مختصر..."></div>
-    <div class="form-g"><label>صورة القسم (بانر اختياري)</label>
-      <div class="img-src-tabs">
-        <div class="img-src-tab active" id="catTabUpload" onclick="switchCatImgTab('upload')">📁 رفع من الجهاز</div>
-        <div class="img-src-tab" id="catTabUrl" onclick="switchCatImgTab('url')">🔗 رابط صورة</div>
-      </div>
-      <div id="catUploadSection">
-        <div class="img-upload" id="catImgBox"><input type="file" id="catImgInput" accept="image/*" onchange="handleCatImg(this)"><div id="catImgContent"><div style="font-size:1.8rem;margin-bottom:4px">🖼</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة بانر القسم</p></div></div>
-      </div>
-      <div id="catUrlSection" style="display:none">
+    <div class="form-g"><label>🔗 رابط صورة القسم (بانر اختياري)</label>
+      <div id="catUrlSection">
         <input type="text" class="img-url-input" id="catImgUrl" placeholder="https://example.com/image.jpg" oninput="handleCatImgUrl(this.value)">
-        <div id="catImgUrlStatus" style="display:none;align-items:center;gap:6px;font-size:.82rem;font-weight:700;color:#059669;margin-bottom:6px">✅ اللينك جاهز — سيتحفظ فوراً</div>
-        <div id="catImgUrlEmpty" style="display:none;font-size:.82rem;color:var(--text2);margin-bottom:6px">📎 الصق رابط الصورة بالأعلى</div>
+        <div class="img-url-error" id="catImgUrlError">❌ تعذّر تحميل الصورة، تأكد من صحة الرابط</div>
+        <div style="display:none;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:#059669;margin-bottom:6px" id="catImgUrlTick">✅ اللينك شغال — هيتحفظ فوراً</div>
+        <div class="img-url-preview-wrap"><img id="catImgUrlPreview" src="" alt="" class="img-preview" referrerpolicy="no-referrer" style="display:none" onload="onCatUrlImgLoad()" onerror="onCatUrlImgError()"></div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn-cancel" onclick="closeModal('catModal')">إلغاء</button><button class="btn-save" onclick="saveCat()">حفظ</button></div>
@@ -1420,73 +1401,57 @@ function openProductModal(id=null){
     document.getElementById('pDesc').value=p.desc||'';document.getElementById('pIcon').value=p.icon||'';
     document.getElementById('pAvailable').checked=p.available!==false;document.getElementById('pCat').value=p.categoryId||'';
     productImgData=p.image||null;
-    // Detect if stored image is a URL (not base64)
-    if(p.image && !p.image.startsWith('data:')){
-      switchProductImgTab('url');
-      document.getElementById('productImgUrl').value=p.image;
-      const status=document.getElementById('productImgUrlStatus');if(status)status.style.display='flex';
-    } else {
-      switchProductImgTab('upload');
-      document.getElementById('productImgContent').innerHTML=p.image?`<img src="${p.image}" class="img-preview">`:'<div style="font-size:1.8rem;margin-bottom:4px">📷</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة</p>';
-    }
+    const imgUrl=p.image||'';
+    document.getElementById('productImgUrl').value=imgUrl;
+    const prev=document.getElementById('productImgUrlPreview');
+    const tick=document.getElementById('productImgUrlTick');
+    if(imgUrl){prev.src=imgUrl;prev.style.display='block';if(tick)tick.style.display='inline-flex';}
+    else{prev.src='';prev.style.display='none';if(tick)tick.style.display='none';}
+    document.getElementById('productImgUrlError').style.display='none';
   }else{
     document.getElementById('productModalTitle').textContent='+ إضافة منتج';
     document.getElementById('pName').value='';document.getElementById('pPrice').value='';document.getElementById('pDesc').value='';document.getElementById('pIcon').value='';
     document.getElementById('pAvailable').checked=true;document.getElementById('pCat').value='';
-    switchProductImgTab('upload');
-    document.getElementById('productImgContent').innerHTML='<div style="font-size:1.8rem;margin-bottom:4px">📷</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة</p>';
+    productImgData=null;
+    document.getElementById('productImgUrl').value='';
+    const prev=document.getElementById('productImgUrlPreview');if(prev){prev.src='';prev.style.display='none';}
+    const tick=document.getElementById('productImgUrlTick');if(tick)tick.style.display='none';
+    document.getElementById('productImgUrlError').style.display='none';
   }
   document.getElementById('productModal').classList.add('active');
 }
-function switchProductImgTab(tab){
-  const isUpload=tab==='upload';
-  document.getElementById('productTabUpload').classList.toggle('active',isUpload);
-  document.getElementById('productTabUrl').classList.toggle('active',!isUpload);
-  document.getElementById('productUploadSection').style.display=isUpload?'block':'none';
-  document.getElementById('productUrlSection').style.display=isUpload?'none':'block';
-  if(isUpload){
-    // reset URL data only
-    document.getElementById('productImgInput').value='';
-    const pstatus=document.getElementById('productImgUrlStatus');if(pstatus)pstatus.style.display='none';
-  }else{
-    // sync status indicator with current input value (don't touch productImgData here)
-    const existingUrl=document.getElementById('productImgUrl').value.trim();
-    const pstatus=document.getElementById('productImgUrlStatus');
-    const pempty=document.getElementById('productImgUrlEmpty');
-    if(existingUrl){
-      if(pstatus)pstatus.style.display='flex';
-      if(pempty)pempty.style.display='none';
-    }else{
-      if(pstatus)pstatus.style.display='none';
-      if(pempty)pempty.style.display='flex';
-    }
-  }
-}
+
 function handleProductImgUrl(val){
   const url=val.trim();
-  const status=document.getElementById('productImgUrlStatus');
-  const empty=document.getElementById('productImgUrlEmpty');
-  if(!url){
-    if(status)status.style.display='none';
-    if(empty)empty.style.display='flex';
-    return;
-  }
-  if(url.startsWith('data:')){
-    if(status){status.style.display='flex';status.style.color='#e53e3e';status.textContent='❌ هذا ليس رابط — الصق رابط URL مباشر (يبدأ بـ https://)';}
-    return;
-  }
-  if(status){status.style.display='flex';status.style.color='#059669';status.textContent='✅ اللينك جاهز — سيتحفظ فوراً';}
-  if(empty)empty.style.display='none';
+  const prev=document.getElementById('productImgUrlPreview');
+  const err=document.getElementById('productImgUrlError');
+  const tick=document.getElementById('productImgUrlTick');
+  if(!url){prev.style.display='none';prev.src='';err.style.display='none';if(tick)tick.style.display='none';productImgData=null;return;}
+  productImgData=url;
+  err.style.display='none';if(tick)tick.style.display='none';
+  prev.src='';
+  prev.style.display='block';
+  prev.src=url;
 }
-function compressImage(file,maxW,maxH,quality,callback){const reader=new FileReader();reader.onload=e=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>maxW||h>maxH){const ratio=Math.min(maxW/w,maxH/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);const compressed=canvas.toDataURL('image/jpeg',quality);callback(compressed);};img.src=e.target.result;};reader.readAsDataURL(file);}
-function handleProductImg(input){
-  const file=input.files[0];if(!file)return;
-  document.getElementById('productImgContent').innerHTML='<div style="font-size:.8rem;color:var(--text2);padding:10px">جاري ضغط الصورة...</div>';
-  compressImage(file,800,800,0.75,compressed=>{
-    document.getElementById('productImgContent').innerHTML=`<img src="${compressed}" class="img-preview">`;
-    productImgData=compressed;
-  });
+function onProductUrlImgLoad(){
+  document.getElementById('productImgUrlPreview').style.display='block';
+  document.getElementById('productImgUrlError').style.display='none';
+  const tick=document.getElementById('productImgUrlTick');
+  if(tick)tick.style.display='inline-flex';
 }
+function onProductUrlImgError(){
+  // لو الصورة فشلت تتحمل — ممكن يكون CORS بس الرابط صح
+  // نحاول نعرضها بدون crossorigin
+  const prev=document.getElementById('productImgUrlPreview');
+  const url=document.getElementById('productImgUrl').value.trim();
+  if(!url){prev.style.display='none';return;}
+  // حاول مرة تانية بدون crossorigin
+  const imgTest=new Image();
+  imgTest.onload=()=>{prev.style.display='block';document.getElementById('productImgUrlError').style.display='none';const tick=document.getElementById('productImgUrlTick');if(tick)tick.style.display='inline-flex';};
+  imgTest.onerror=()=>{prev.style.display='none';document.getElementById('productImgUrlError').style.display='block';};
+  imgTest.src=url+'?t='+Date.now();
+}
+
 
 function renderLimitBanner(){
   // Products limit banner
@@ -1519,50 +1484,31 @@ function renderLimitBanner(){
 }
 
 function saveProduct(){
-  const name=document.getElementById('pName').value.trim();
-  const price=parseFloat(document.getElementById('pPrice').value);
+  const name=document.getElementById('pName').value.trim();const price=parseFloat(document.getElementById('pPrice').value);
   if(!name||isNaN(price)){showToast('يرجى إدخال الاسم والسعر','error');return;}
   const products=restaurant.products||[];
+  // ── Limit check (only on new product, not edit) ──
   if(!editingProductId){
     const limit=(restaurant.limits?.products)||0;
-    if(limit>0&&products.length>=limit){showToast('⛔ وصلت للحد الأقصى من المنتجات ('+limit+' منتج). تواصل مع الإدارة لزيادة الليميت.','error');return;}
+    if(limit>0 && products.length>=limit){
+      showToast('⛔ وصلت للحد الأقصى من المنتجات ('+limit+' منتج). تواصل مع الإدارة لزيادة الليميت.','error');
+      return;
+    }
   }
-
-  // الأولوية: لو في URL مكتوب → استخدمه مباشرة
-  // لو مفيش URL → استخدم productImgData (base64 من الجهاز)
-  const urlVal = document.getElementById('productImgUrl').value.trim();
-  const finalImg = (urlVal && !urlVal.startsWith('data:')) ? urlVal : (productImgData || null);
-
   const saveBtn=document.querySelector('#productModal .btn-save');
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='جاري الحفظ...';}
 
-  const doSave=(imgVal)=>{
+  const doSave=(finalImgVal)=>{
     const docId=editingProductId||'prod_'+Date.now();
-    const data={name,price,
-      desc:document.getElementById('pDesc').value.trim(),
-      icon:document.getElementById('pIcon').value.trim()||'🍽',
-      categoryId:document.getElementById('pCat').value,
-      available:document.getElementById('pAvailable').checked,
-      image:imgVal||null,
-      updatedAt:new Date().toISOString()
-    };
-    db.collection('restaurants').doc(restId).collection('products').doc(docId)
-      .set(data,{merge:true})
-      .then(()=>{closeModal('productModal');showToast('تم حفظ المنتج ✓','success');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}})
-      .catch(e=>{showToast('خطأ في الحفظ','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
+    const data={name,price,desc:document.getElementById('pDesc').value.trim(),icon:document.getElementById('pIcon').value.trim()||'🍽',categoryId:document.getElementById('pCat').value,available:document.getElementById('pAvailable').checked,image:finalImgVal||null,updatedAt:new Date().toISOString()};
+    db.collection('restaurants').doc(restId).collection('products').doc(docId).set(data,{merge:true}).then(()=>{
+      closeModal('productModal');showToast('تم حفظ المنتج ✓','success');
+      if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
+    }).catch(e=>{showToast('خطأ في الحفظ','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
   };
 
-  // لو مفيش صورة أو الصورة لينك → احفظ فوراً في Firestore مباشرة
-  if(!finalImg || finalImg.startsWith('http')){doSave(finalImg);return;}
-
-  // لو base64 (رفع من الجهاز) → ارفع على Firebase Storage ثم احفظ
-  showToast('جاري رفع الصورة...','success');
-  const fileName='products/'+restId+'/'+(editingProductId||'prod_'+Date.now())+'_'+Date.now()+'.jpg';
-  fetch(finalImg).then(r=>r.blob()).then(blob=>{
-    storage.ref().child(fileName).put(blob,{contentType:'image/jpeg'}).then(snap=>{
-      snap.ref.getDownloadURL().then(url=>doSave(url));
-    }).catch(e=>{showToast('خطأ في رفع الصورة','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
-  }).catch(e=>{showToast('خطأ في تحضير الصورة','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
+  // URL مباشر → احفظ فوراً
+  doSave(productImgData);
 }
 function toggleProduct(id){const p=(restaurant.products||[]).find(x=>x.id===id);if(!p)return;db.collection('restaurants').doc(restId).collection('products').doc(id).update({available:!p.available}).catch(e=>showToast('خطأ','error'));}
 function deleteProduct(id){if(!confirm('حذف هذا المنتج؟'))return;db.collection('restaurants').doc(restId).collection('products').doc(id).delete().catch(e=>showToast('خطأ في الحذف','error'));}
@@ -1643,111 +1589,77 @@ function openCatModal(id=null){
     document.getElementById('catModalTitle').textContent='تعديل القسم';
     document.getElementById('catName').value=c.name;document.getElementById('catIcon').value=c.icon||'';document.getElementById('catDesc').value=c.desc||'';
     catImgData=c.image||null;
-    if(c.image&&!c.image.startsWith('data:')){
-      switchCatImgTab('url');
-      document.getElementById('catImgUrl').value=c.image;
-      const status=document.getElementById('catImgUrlStatus');if(status)status.style.display='flex';
-    }else{
-      switchCatImgTab('upload');
-      document.getElementById('catImgContent').innerHTML=c.image?`<img src="${c.image}" class="img-preview">`:'<div style="font-size:1.8rem;margin-bottom:4px">🖼</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة</p>';
-    }
+    const catUrl=c.image||'';
+    document.getElementById('catImgUrl').value=catUrl;
+    const prev=document.getElementById('catImgUrlPreview');
+    const tick=document.getElementById('catImgUrlTick');
+    if(catUrl){prev.src=catUrl;prev.style.display='block';if(tick)tick.style.display='inline-flex';}
+    else{prev.src='';prev.style.display='none';if(tick)tick.style.display='none';}
+    document.getElementById('catImgUrlError').style.display='none';
   }else{
     document.getElementById('catModalTitle').textContent='+ إضافة قسم';
     document.getElementById('catName').value='';document.getElementById('catIcon').value='';document.getElementById('catDesc').value='';
-    switchCatImgTab('upload');
-    document.getElementById('catImgContent').innerHTML='<div style="font-size:1.8rem;margin-bottom:4px">🖼</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة</p>';
+    catImgData=null;
+    document.getElementById('catImgUrl').value='';
+    const prev=document.getElementById('catImgUrlPreview');if(prev){prev.src='';prev.style.display='none';}
+    const tick=document.getElementById('catImgUrlTick');if(tick)tick.style.display='none';
+    document.getElementById('catImgUrlError').style.display='none';
   }
   document.getElementById('catModal').classList.add('active');
 }
 function saveCat(){
-  const name=document.getElementById('catName').value.trim();
-  if(!name){showToast('أدخل اسم القسم','error');return;}
+  const name=document.getElementById('catName').value.trim();if(!name){showToast('أدخل اسم القسم','error');return;}
   const categories=restaurant.categories||[];
+  // ── Limit check (only on new category, not edit) ──
   if(!editingCatId){
     const limit=(restaurant.limits?.categories)||0;
-    if(limit>0&&categories.length>=limit){showToast('⛔ وصلت للحد الأقصى من الأقسام ('+limit+' قسم). تواصل مع الإدارة لزيادة الليميت.','error');return;}
+    if(limit>0 && categories.length>=limit){
+      showToast('⛔ وصلت للحد الأقصى من الأقسام ('+limit+' قسم). تواصل مع الإدارة لزيادة الليميت.','error');
+      return;
+    }
   }
-
-  // الأولوية: لو في URL مكتوب → استخدمه مباشرة
-  // لو مفيش URL → استخدم catImgData (base64 من الجهاز)
-  const urlVal = document.getElementById('catImgUrl').value.trim();
-  const finalImg = (urlVal && !urlVal.startsWith('data:')) ? urlVal : (catImgData || null);
-
   const saveBtn=document.querySelector('#catModal .btn-save');
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='جاري الحفظ...';}
 
-  const doSave=(imgVal)=>{
+  const doSave=(finalImgVal)=>{
     const docId=editingCatId||'cat_'+Date.now();
-    const data={name,
-      icon:document.getElementById('catIcon').value.trim()||'📁',
-      desc:document.getElementById('catDesc').value.trim(),
-      image:imgVal||null,
-      updatedAt:new Date().toISOString()
-    };
-    db.collection('restaurants').doc(restId).collection('categories').doc(docId)
-      .set(data,{merge:true})
-      .then(()=>{closeModal('catModal');showToast('تم حفظ القسم ✓','success');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}})
-      .catch(e=>{showToast('خطأ في الحفظ','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
+    const data={name,icon:document.getElementById('catIcon').value.trim()||'📁',desc:document.getElementById('catDesc').value.trim(),image:finalImgVal||null,updatedAt:new Date().toISOString()};
+    db.collection('restaurants').doc(restId).collection('categories').doc(docId).set(data,{merge:true}).then(()=>{
+      closeModal('catModal');showToast('تم حفظ القسم ✓','success');
+      if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
+    }).catch(e=>{showToast('خطأ في الحفظ','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
   };
 
-  // لو مفيش صورة أو الصورة لينك → احفظ فوراً في Firestore مباشرة
-  if(!finalImg || finalImg.startsWith('http')){doSave(finalImg);return;}
+  // URL مباشر → احفظ فوراً
+  doSave(catImgData);
+}
 
-  // لو base64 (رفع من الجهاز) → ارفع على Firebase Storage ثم احفظ
-  showToast('جاري رفع الصورة...','success');
-  const fileName='categories/'+restId+'/'+(editingCatId||'cat_'+Date.now())+'_'+Date.now()+'.jpg';
-  fetch(finalImg).then(r=>r.blob()).then(blob=>{
-    storage.ref().child(fileName).put(blob,{contentType:'image/jpeg'}).then(snap=>{
-      snap.ref.getDownloadURL().then(url=>doSave(url));
-    }).catch(e=>{showToast('خطأ في رفع الصورة','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
-  }).catch(e=>{showToast('خطأ في تحضير الصورة','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
-}
-function handleCatImg(input){
-  const file=input.files[0];if(!file)return;
-  document.getElementById('catImgContent').innerHTML='<div style="font-size:.8rem;color:var(--text2);padding:10px">جاري ضغط الصورة...</div>';
-  compressImage(file,1000,600,0.75,compressed=>{
-    document.getElementById('catImgContent').innerHTML=`<img src="${compressed}" class="img-preview">`;
-    catImgData=compressed;
-  });
-}
-function switchCatImgTab(tab){
-  const isUpload=tab==='upload';
-  document.getElementById('catTabUpload').classList.toggle('active',isUpload);
-  document.getElementById('catTabUrl').classList.toggle('active',!isUpload);
-  document.getElementById('catUploadSection').style.display=isUpload?'block':'none';
-  document.getElementById('catUrlSection').style.display=isUpload?'none':'block';
-  if(isUpload){
-    document.getElementById('catImgInput').value='';
-    const cstatus=document.getElementById('catImgUrlStatus');if(cstatus)cstatus.style.display='none';
-  }else{
-    const existingUrl=document.getElementById('catImgUrl').value.trim();
-    const cstatus=document.getElementById('catImgUrlStatus');
-    const cempty=document.getElementById('catImgUrlEmpty');
-    if(existingUrl){
-      catImgData=existingUrl;
-      if(cstatus)cstatus.style.display='flex';
-      if(cempty)cempty.style.display='none';
-    }else{
-      if(cstatus)cstatus.style.display='none';
-      if(cempty)cempty.style.display='flex';
-    }
-  }
-}
 function handleCatImgUrl(val){
   const url=val.trim();
-  const status=document.getElementById('catImgUrlStatus');
-  const empty=document.getElementById('catImgUrlEmpty');
-  if(!url){
-    if(status)status.style.display='none';
-    if(empty)empty.style.display='flex';
-    return;
-  }
-  if(url.startsWith('data:')){
-    if(status){status.style.display='flex';status.style.color='#e53e3e';status.textContent='❌ هذا ليس رابط — الصق رابط URL مباشر (يبدأ بـ https://)';}
-    return;
-  }
-  if(status){status.style.display='flex';status.style.color='#059669';status.textContent='✅ اللينك جاهز — سيتحفظ فوراً';}
-  if(empty)empty.style.display='none';
+  const prev=document.getElementById('catImgUrlPreview');
+  const err=document.getElementById('catImgUrlError');
+  const tick=document.getElementById('catImgUrlTick');
+  if(!url){prev.style.display='none';prev.src='';err.style.display='none';if(tick)tick.style.display='none';catImgData=null;return;}
+  catImgData=url;
+  err.style.display='none';if(tick)tick.style.display='none';
+  prev.src='';
+  prev.style.display='block';
+  prev.src=url;
+}
+function onCatUrlImgLoad(){
+  document.getElementById('catImgUrlPreview').style.display='block';
+  document.getElementById('catImgUrlError').style.display='none';
+  const tick=document.getElementById('catImgUrlTick');
+  if(tick)tick.style.display='inline-flex';
+}
+function onCatUrlImgError(){
+  const prev=document.getElementById('catImgUrlPreview');
+  const url=document.getElementById('catImgUrl').value.trim();
+  if(!url){prev.style.display='none';return;}
+  const imgTest=new Image();
+  imgTest.onload=()=>{prev.style.display='block';document.getElementById('catImgUrlError').style.display='none';const tick=document.getElementById('catImgUrlTick');if(tick)tick.style.display='inline-flex';};
+  imgTest.onerror=()=>{prev.style.display='none';document.getElementById('catImgUrlError').style.display='block';};
+  imgTest.src=url+'?t='+Date.now();
 }
 function deleteCat(id){if(!confirm('حذف هذا القسم؟'))return;db.collection('restaurants').doc(restId).collection('categories').doc(id).delete().then(()=>showToast('تم حذف القسم','error')).catch(e=>showToast('خطأ في الحذف','error'));}
 
