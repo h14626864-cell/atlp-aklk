@@ -603,7 +603,7 @@
       <div class="page-section" id="sectionProducts">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px">
           <div style="font-size:1.05rem;font-weight:800">إدارة المنتجات</div>
-          <button class="btn-save" style="padding:9px 20px;border-radius:10px" onclick="openProductModal()">+ إضافة منتج</button>
+          <button onclick="openProductModal()" style="width:42px;height:42px;border-radius:50%;background:rgba(59,130,246,.15);color:#3b82f6;border:2px solid #3b82f6;font-size:1.45rem;display:flex;align-items:center;justify-content:center;transition:all .2s;backdrop-filter:blur(4px)" onmouseover="this.style.background='rgba(59,130,246,.28)'" onmouseout="this.style.background='rgba(59,130,246,.15)'">+</button>
         </div>
         <div class="limit-banner" id="productLimitBanner"></div>
         <div class="cards-grid" id="productsList"></div>
@@ -613,7 +613,7 @@
       <div class="page-section" id="sectionCategories">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px">
           <div style="font-size:1.05rem;font-weight:800">إدارة الأقسام</div>
-          <button class="btn-save" style="padding:9px 20px;border-radius:10px" onclick="openCatModal()">+ إضافة قسم</button>
+          <button onclick="openCatModal()" style="width:42px;height:42px;border-radius:50%;background:rgba(59,130,246,.15);color:#3b82f6;border:2px solid #3b82f6;font-size:1.45rem;display:flex;align-items:center;justify-content:center;transition:all .2s;backdrop-filter:blur(4px)" onmouseover="this.style.background='rgba(59,130,246,.28)'" onmouseout="this.style.background='rgba(59,130,246,.15)'">+</button>
         </div>
         <div class="limit-banner" id="catLimitBanner"></div>
         <div class="cards-grid" id="catsList"></div>
@@ -836,9 +836,8 @@
       </div>
       <div id="productUrlSection" style="display:none">
         <input type="text" class="img-url-input" id="productImgUrl" placeholder="https://example.com/image.jpg" oninput="handleProductImgUrl(this.value)">
-        <div class="img-url-error" id="productImgUrlError">❌ تعذّر تحميل الصورة، تأكد من صحة الرابط</div>
-        <div style="display:none;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:#059669;margin-bottom:6px" id="productImgUrlTick">✅ اللينك شغال — هيتحفظ فوراً</div>
-        <div class="img-url-preview-wrap"><img id="productImgUrlPreview" src="" alt="" class="img-preview" style="display:none" onload="onProductUrlImgLoad()" onerror="onProductUrlImgError()"></div>
+        <div id="productImgUrlStatus" style="display:none;align-items:center;gap:6px;font-size:.82rem;font-weight:700;color:#059669;margin-bottom:6px">✅ اللينك جاهز — سيتحفظ فوراً</div>
+        <div id="productImgUrlEmpty" style="display:none;font-size:.82rem;color:var(--text2);margin-bottom:6px">📎 الصق رابط الصورة بالأعلى</div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn-cancel" onclick="closeModal('productModal')">إلغاء</button><button class="btn-save" onclick="saveProduct()">حفظ</button></div>
@@ -864,9 +863,8 @@
       </div>
       <div id="catUrlSection" style="display:none">
         <input type="text" class="img-url-input" id="catImgUrl" placeholder="https://example.com/image.jpg" oninput="handleCatImgUrl(this.value)">
-        <div class="img-url-error" id="catImgUrlError">❌ تعذّر تحميل الصورة، تأكد من صحة الرابط</div>
-        <div style="display:none;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:#059669;margin-bottom:6px" id="catImgUrlTick">✅ اللينك شغال — هيتحفظ فوراً</div>
-        <div class="img-url-preview-wrap"><img id="catImgUrlPreview" src="" alt="" class="img-preview" style="display:none" onload="onCatUrlImgLoad()" onerror="onCatUrlImgError()"></div>
+        <div id="catImgUrlStatus" style="display:none;align-items:center;gap:6px;font-size:.82rem;font-weight:700;color:#059669;margin-bottom:6px">✅ اللينك جاهز — سيتحفظ فوراً</div>
+        <div id="catImgUrlEmpty" style="display:none;font-size:.82rem;color:var(--text2);margin-bottom:6px">📎 الصق رابط الصورة بالأعلى</div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn-cancel" onclick="closeModal('catModal')">إلغاء</button><button class="btn-save" onclick="saveCat()">حفظ</button></div>
@@ -1426,9 +1424,7 @@ function openProductModal(id=null){
     if(p.image && !p.image.startsWith('data:')){
       switchProductImgTab('url');
       document.getElementById('productImgUrl').value=p.image;
-      const prev=document.getElementById('productImgUrlPreview');prev.src=p.image;prev.style.display='block';
-      document.getElementById('productImgUrlError').style.display='none';
-      const tick=document.getElementById('productImgUrlTick');if(tick)tick.style.display='inline-flex';
+      const status=document.getElementById('productImgUrlStatus');if(status)status.style.display='flex';
     } else {
       switchProductImgTab('upload');
       document.getElementById('productImgContent').innerHTML=p.image?`<img src="${p.image}" class="img-preview">`:'<div style="font-size:1.8rem;margin-bottom:4px">📷</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة</p>';
@@ -1449,39 +1445,36 @@ function switchProductImgTab(tab){
   document.getElementById('productUploadSection').style.display=isUpload?'block':'none';
   document.getElementById('productUrlSection').style.display=isUpload?'none':'block';
   if(isUpload){
-    productImgData=null;
+    // reset URL data only
     document.getElementById('productImgInput').value='';
-    const ptick=document.getElementById('productImgUrlTick');if(ptick)ptick.style.display='none';
-    document.getElementById('productImgContent').innerHTML='<div style="font-size:1.8rem;margin-bottom:4px">📷</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة المنتج</p>';
+    const pstatus=document.getElementById('productImgUrlStatus');if(pstatus)pstatus.style.display='none';
   }else{
-    productImgData=null;
+    // sync status indicator with current input value (don't touch productImgData here)
     const existingUrl=document.getElementById('productImgUrl').value.trim();
-    if(existingUrl){handleProductImgUrl(existingUrl);}
+    const pstatus=document.getElementById('productImgUrlStatus');
+    const pempty=document.getElementById('productImgUrlEmpty');
+    if(existingUrl){
+      if(pstatus)pstatus.style.display='flex';
+      if(pempty)pempty.style.display='none';
+    }else{
+      if(pstatus)pstatus.style.display='none';
+      if(pempty)pempty.style.display='flex';
+    }
   }
 }
 function handleProductImgUrl(val){
   const url=val.trim();
-  const prev=document.getElementById('productImgUrlPreview');
-  const err=document.getElementById('productImgUrlError');
-  const tick=document.getElementById('productImgUrlTick');
-  if(!url){prev.style.display='none';prev.src='';err.style.display='none';if(tick)tick.style.display='none';productImgData=null;return;}
+  const status=document.getElementById('productImgUrlStatus');
+  const empty=document.getElementById('productImgUrlEmpty');
+  if(!url){
+    productImgData=null;
+    if(status)status.style.display='none';
+    if(empty)empty.style.display='flex';
+    return;
+  }
   productImgData=url;
-  prev.style.display='none';err.style.display='none';if(tick)tick.style.display='none';
-  prev.src=url;
-}
-function onProductUrlImgLoad(){
-  document.getElementById('productImgUrlPreview').style.display='block';
-  document.getElementById('productImgUrlError').style.display='none';
-  const tick=document.getElementById('productImgUrlTick');
-  if(tick)tick.style.display='inline-flex';
-}
-function onProductUrlImgError(){
-  document.getElementById('productImgUrlPreview').style.display='none';
-  const tick=document.getElementById('productImgUrlTick');
-  if(tick)tick.style.display='none';
-  const url=document.getElementById('productImgUrl').value.trim();
-  if(url){document.getElementById('productImgUrlError').style.display='block';}
-  // لا تمسح productImgData — الرابط ممكن يكون صح بس CORS يمنع التحميل
+  if(status)status.style.display='flex';
+  if(empty)empty.style.display='none';
 }
 function compressImage(file,maxW,maxH,quality,callback){const reader=new FileReader();reader.onload=e=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>maxW||h>maxH){const ratio=Math.min(maxW/w,maxH/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);const compressed=canvas.toDataURL('image/jpeg',quality);callback(compressed);};img.src=e.target.result;};reader.readAsDataURL(file);}
 function handleProductImg(input){
@@ -1666,9 +1659,7 @@ function openCatModal(id=null){
     if(c.image&&!c.image.startsWith('data:')){
       switchCatImgTab('url');
       document.getElementById('catImgUrl').value=c.image;
-      const prev=document.getElementById('catImgUrlPreview');prev.src=c.image;prev.style.display='block';
-      document.getElementById('catImgUrlError').style.display='none';
-      const tick=document.getElementById('catImgUrlTick');if(tick)tick.style.display='inline-flex';
+      const status=document.getElementById('catImgUrlStatus');if(status)status.style.display='flex';
     }else{
       switchCatImgTab('upload');
       document.getElementById('catImgContent').innerHTML=c.image?`<img src="${c.image}" class="img-preview">`:'<div style="font-size:1.8rem;margin-bottom:4px">🖼</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة</p>';
@@ -1755,38 +1746,35 @@ function switchCatImgTab(tab){
   document.getElementById('catUploadSection').style.display=isUpload?'block':'none';
   document.getElementById('catUrlSection').style.display=isUpload?'none':'block';
   if(isUpload){
-    catImgData=null;
     document.getElementById('catImgInput').value='';
-    const ctick=document.getElementById('catImgUrlTick');if(ctick)ctick.style.display='none';
-    document.getElementById('catImgContent').innerHTML='<div style="font-size:1.8rem;margin-bottom:4px">🖼</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة بانر القسم</p>';
+    const cstatus=document.getElementById('catImgUrlStatus');if(cstatus)cstatus.style.display='none';
   }else{
-    catImgData=null;
     const existingUrl=document.getElementById('catImgUrl').value.trim();
-    if(existingUrl){handleCatImgUrl(existingUrl);}
+    const cstatus=document.getElementById('catImgUrlStatus');
+    const cempty=document.getElementById('catImgUrlEmpty');
+    if(existingUrl){
+      catImgData=existingUrl;
+      if(cstatus)cstatus.style.display='flex';
+      if(cempty)cempty.style.display='none';
+    }else{
+      if(cstatus)cstatus.style.display='none';
+      if(cempty)cempty.style.display='flex';
+    }
   }
 }
 function handleCatImgUrl(val){
   const url=val.trim();
-  const prev=document.getElementById('catImgUrlPreview');
-  const err=document.getElementById('catImgUrlError');
-  const tick=document.getElementById('catImgUrlTick');
-  if(!url){prev.style.display='none';prev.src='';err.style.display='none';if(tick)tick.style.display='none';catImgData=null;return;}
+  const status=document.getElementById('catImgUrlStatus');
+  const empty=document.getElementById('catImgUrlEmpty');
+  if(!url){
+    catImgData=null;
+    if(status)status.style.display='none';
+    if(empty)empty.style.display='flex';
+    return;
+  }
   catImgData=url;
-  prev.style.display='none';err.style.display='none';if(tick)tick.style.display='none';
-  prev.src=url;
-}
-function onCatUrlImgLoad(){
-  document.getElementById('catImgUrlPreview').style.display='block';
-  document.getElementById('catImgUrlError').style.display='none';
-  const tick=document.getElementById('catImgUrlTick');
-  if(tick)tick.style.display='inline-flex';
-}
-function onCatUrlImgError(){
-  document.getElementById('catImgUrlPreview').style.display='none';
-  const tick=document.getElementById('catImgUrlTick');
-  if(tick)tick.style.display='none';
-  const url=document.getElementById('catImgUrl').value.trim();
-  if(url){document.getElementById('catImgUrlError').style.display='block';}
+  if(status)status.style.display='flex';
+  if(empty)empty.style.display='none';
 }
 function deleteCat(id){if(!confirm('حذف هذا القسم؟'))return;db.collection('restaurants').doc(restId).collection('categories').doc(id).delete().then(()=>showToast('تم حذف القسم','error')).catch(e=>showToast('خطأ في الحذف','error'));}
 
