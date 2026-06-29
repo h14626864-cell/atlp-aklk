@@ -1139,65 +1139,92 @@ function init(){
         return;
       }
       const doc = snap.docs[0];
-      R = {id: doc.id, ...doc.data()};
+      // نحمّل فقط الـ meta — البيانات الكبيرة من sub-collections
+      R = {id: doc.id, ...doc.data(), products:[], categories:[], reviews:[], customers:[], banners:[], orders_list:[]};
       restId = R.id;
-      if(!R.reviews)R.reviews=[];
-      if(!R.categories)R.categories=[];
-      if(!R.products)R.products=[];
-      if(!R.banners)R.banners=[];
-      if(!R.orders_list)R.orders_list=[];
-      if(!R.customers)R.customers=[];
+      document.title=R.name+' - atlop-akltk';
 
-      // تحميل المنتجات والأقسام من الـ subcollections
+      // Check for saved session
+      try{
+        const savedUser = localStorage.getItem('mp_user_'+restId);
+        if(savedUser){
+          try{currentUser = JSON.parse(savedUser);}catch(e){currentUser=null;}
+        }
+      }catch(e){}
+
+      // ── Sub-collection listeners ──
+      const restRef = db.collection('restaurants').doc(restId);
+
+      // 1) Meta listener (settings, design, social…)
+      if(unsub) unsub();
+      unsub = restRef.onSnapshot(doc => {
+        if(!doc.exists) return;
+        const meta = {id: doc.id, ...doc.data()};
+        // الحفاظ على البيانات المحملة من sub-collections
+        meta.products   = R.products   || [];
+        meta.categories = R.categories || [];
+        meta.reviews    = R.reviews    || [];
+        meta.customers  = R.customers  || [];
+        meta.banners    = R.banners    || [];
+        meta.discounts  = R.discounts  || [];
+        meta.orders_list= R.orders_list|| [];
+        R = meta;
+        rebuildContent();
+        buildSlider();
+      });
+
+      // 2) Products sub-collection
+      restRef.collection('products').onSnapshot(snap => {
+        R.products = snap.docs.map(d=>({id:d.id,...d.data()}));
+        normalizeProductOptions();
+        rebuildContent();
+      });
+
+      // 3) Categories sub-collection
+      restRef.collection('categories').onSnapshot(snap => {
+        R.categories = snap.docs.map(d=>({id:d.id,...d.data()}));
+        rebuildContent();
+      });
+
+      // 4) Reviews sub-collection
+      restRef.collection('reviews').onSnapshot(snap => {
+        R.reviews = snap.docs.map(d=>({id:d.id,...d.data()}));
+      });
+
+      // 5) Customers sub-collection
+      restRef.collection('customers').onSnapshot(snap => {
+        R.customers = snap.docs.map(d=>({id:d.id,...d.data()}));
+      });
+
+      // 6) Banners sub-collection
+      restRef.collection('banners').orderBy('order','asc').onSnapshot(snap => {
+        R.banners = snap.docs.map(d=>({id:d.id,...d.data()}));
+        buildSlider();
+      });
+
+      // 7) Discounts sub-collection
+      restRef.collection('discounts').onSnapshot(snap => {
+        R.discounts = snap.docs.map(d=>({id:d.id,...d.data()}));
+      });
+
+      // بعد أول load من sub-collections نعمل buildPage
       Promise.all([
-        db.collection('restaurants').doc(restId).collection('products').get(),
-        db.collection('restaurants').doc(restId).collection('categories').get()
-      ]).then(([prodSnap, catSnap])=>{
-        if(!prodSnap.empty) R.products = prodSnap.docs.map(d=>({id:d.id,...d.data()}));
-        if(!catSnap.empty) R.categories = catSnap.docs.map(d=>({id:d.id,...d.data()}));
+        restRef.collection('products').get(),
+        restRef.collection('categories').get(),
+        restRef.collection('banners').get()
+      ]).then(([pSnap, cSnap, bSnap]) => {
+        R.products   = pSnap.docs.map(d=>({id:d.id,...d.data()}));
+        R.categories = cSnap.docs.map(d=>({id:d.id,...d.data()}));
+        R.banners    = bSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
         normalizeProductOptions();
-        document.title=R.name+' - atlop-akltk';
-
-        // Check for saved session
-        try{
-          const savedUser = localStorage.getItem('mp_user_'+restId);
-          if(savedUser){
-            try{currentUser = JSON.parse(savedUser);}catch(e){currentUser=null;}
-          }
-        }catch(e){}
-
         buildPage();
         buildSlider();
+      }).catch(err => console.warn('Initial sub-collection load error:', err));
 
-        // Real-time listener للمنيو (بدون products/categories - من subcollections)
-        if(unsub) unsub();
-        unsub = db.collection('restaurants').doc(restId).onSnapshot(doc => {
-          if(!doc.exists) return;
-          const prevOrders = R.orders_list || [];
-          const prevProds = R.products || [];
-          const prevCats = R.categories || [];
-          R = {id: doc.id, ...doc.data()};
-          R.orders_list = prevOrders;
-          R.products = prevProds;
-          R.categories = prevCats;
-          if(!R.reviews)R.reviews=[];
-          if(!R.banners)R.banners=[];
-          normalizeProductOptions();
-          rebuildContent();
-          buildSlider();
-        });
-
-        // Real-time listener للطلبات من RTDB (عشان العميل يشوف حالة طلبه)
-        rtdb.ref('orders/' + restId).orderByChild('time').on('value', snap => {
-          const rawOrders = snap.val();
-          R.orders_list = rawOrders ? Object.values(rawOrders) : [];
-        });
-      }).catch(err=>{
-        // Fallback: use products/categories from main doc if subcollections empty
-        normalizeProductOptions();
-        document.title=R.name+' - atlop-akltk';
-        buildPage();
-        buildSlider();
+      // Real-time listener للطلبات من RTDB (عشان العميل يشوف حالة طلبه)
+      rtdb.ref('orders/' + restId).orderByChild('time').on('value', snap => {
+        const rawOrders = snap.val();
+        R.orders_list = rawOrders ? Object.values(rawOrders) : [];
       });
     }).catch(err => {
       showError('خطأ في تحميل البيانات: '+err.message);
@@ -1253,12 +1280,11 @@ function doAuthRegister(){
   const customers=R.customers||[];
   const existing=customers.find(c=>c.phone===phone);
   if(existing){toast('هذا الرقم مسجل بالفعل، قم بتسجيل الدخول','err');return;}
-  const newCustomer={id:'cust_'+Date.now(),name,phone,password:pass,createdAt:new Date().toLocaleDateString('ar-EG',{year:'numeric',month:'short',day:'numeric'})};
-  customers.push(newCustomer);
-  // Save to Firestore
-  db.collection('restaurants').doc(restId).update({customers:customers}).then(()=>{
-    R.customers=customers;
-    currentUser={id:newCustomer.id,name:newCustomer.name,phone:newCustomer.phone};
+  const custId='cust_'+Date.now();
+  const newCustomer={id:custId,name,phone,password:pass,createdAt:new Date().toISOString()};
+  // Save to customers sub-collection
+  db.collection('restaurants').doc(restId).collection('customers').doc(custId).set(newCustomer).then(()=>{
+    currentUser={id:custId,name,phone};
     localStorage.setItem('mp_user_'+restId,JSON.stringify(currentUser));
     document.getElementById('authModal').classList.remove('open');
     buildPage();buildSlider();
@@ -1410,9 +1436,9 @@ function saveProfile(){
     .map(o=>rtdb.ref('orders/'+restId+'/'+o.id).update({customerName:name,phone:phone}).catch(e=>console.warn('rtdb order update failed:',e)));
   Promise.all(updatePromises).catch(e=>console.warn('rtdb batch update failed:',e));
 
-  db.collection('restaurants').doc(restId).update({customers:customers}).then(()=>{
-    R.customers=customers;
-    R.orders_list=orders;
+  const updFields={name,phone};
+  if(pass) updFields.password=pass;
+  db.collection('restaurants').doc(restId).collection('customers').doc(currentUser.id).update(updFields).then(()=>{
     currentUser.name=name;
     currentUser.phone=phone;
     localStorage.setItem('mp_user_'+restId,JSON.stringify(currentUser));
@@ -1852,16 +1878,14 @@ function submitReview(){
   const text=document.getElementById('rvText').value.trim();
   if(!ratingVal||ratingVal<1||ratingVal>5){toast('ادخل تقييم من 1 الى 5','err');return;}
   if(!name){toast('ادخل اسمك','err');return;}
+  const reviewId='rv_'+Date.now();
   const review={
-    id:'rv_'+Date.now(),productId:reviewProdId,
+    id:reviewId,productId:reviewProdId,
     name,rating:Math.round(ratingVal*10)/10,text,
     date:new Date().toLocaleDateString('ar-EG',{year:'numeric',month:'short',day:'numeric'}),
     createdAt:new Date().toISOString(),reply:null
   };
-  const reviews=R.reviews||[];
-  reviews.push(review);
-  db.collection('restaurants').doc(restId).update({reviews:reviews}).then(()=>{
-    R.reviews=reviews;
+  db.collection('restaurants').doc(restId).collection('reviews').doc(reviewId).set(review).then(()=>{
     document.getElementById('reviewModal').classList.remove('open');
     openPDP(reviewProdId);
     toast('شكرا لتقييمك','ok');

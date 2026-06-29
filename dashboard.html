@@ -606,7 +606,6 @@
           <button class="btn-save" style="padding:9px 20px;border-radius:10px" onclick="openProductModal()">+ إضافة منتج</button>
         </div>
         <div class="limit-banner" id="productLimitBanner"></div>
-        <div class="limit-banner" id="storageLimitBanner"></div>
         <div class="cards-grid" id="productsList"></div>
       </div>
 
@@ -987,15 +986,24 @@ function tryUsernameLogin(u, p){
 }
 
 function foundRestaurant(doc){
-  restaurant = {id: doc.id, ...doc.data()};
+  // نحمّل فقط الـ meta من الـ document — البيانات الكبيرة في sub-collections
+  const meta = {id: doc.id, ...doc.data()};
+  restaurant = {
+    ...meta,
+    products:   [],
+    categories: [],
+    reviews:    [],
+    customers:  [],
+    banners:    [],
+    discounts:  [],
+    orders_list:[]
+  };
   restId = restaurant.id;
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
-  if(!restaurant.reviews)restaurant.reviews=[];
-  prevOrderCount = (restaurant.orders_list||[]).length; // Set baseline before listener
+  prevOrderCount = -1; // سيتم تحديثه بعد أول load من RTDB
   setupDashboard();
-  startListener(); // Real-time instead of polling
-  loadSubcollections(); // تحميل المنتجات والأقسام من الـ subcollections
+  startListener(); // يفتح 8 listeners منفصلة للـ sub-collections
 }
 function showLoginError(msg){const el=document.getElementById('loginError');el.textContent=msg;el.style.display='block';setTimeout(()=>el.style.display='none',3500);}
 document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
@@ -1025,65 +1033,105 @@ function refreshData(){
   if(!restaurant.reviews)restaurant.reviews=[];
   renderStats();renderOrders();renderReviews();updatePendingBadge();updateReviewsBadge();renderStatsPage();renderCustomers();renderDeliveryWorkers();
 }
-function loadSubcollections(){
-  // تحميل المنتجات من الـ subcollection
-  db.collection('restaurants').doc(restId).collection('products').get().then(snap=>{
-    restaurant.products = snap.docs.map(d=>({id:d.id,...d.data()}));
-    // تحميل الأقسام من الـ subcollection
-    return db.collection('restaurants').doc(restId).collection('categories').get();
-  }).then(snap=>{
-    restaurant.categories = snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderProducts();
-    renderCategories();
-    renderStats();
-    renderStatsPage();
-  }).catch(err=>{
-    console.error('Subcollection load error:',err);
-    // Fallback: استخدم البيانات من الـ main document لو موجودة
-    if(!restaurant.products) restaurant.products = [];
-    if(!restaurant.categories) restaurant.categories = [];
-    renderProducts();
-    renderCategories();
-  });
+// ===== SUB-COLLECTION LISTENERS =====
+let unsubMeta=null, unsubProducts=null, unsubCategories=null, unsubReviews=null, unsubCustomers=null, unsubBanners=null, unsubDiscounts=null;
+
+function stopAllListeners(){
+  if(unsubMeta){unsubMeta();unsubMeta=null;}
+  if(unsubProducts){unsubProducts();unsubProducts=null;}
+  if(unsubCategories){unsubCategories();unsubCategories=null;}
+  if(unsubReviews){unsubReviews();unsubReviews=null;}
+  if(unsubCustomers){unsubCustomers();unsubCustomers=null;}
+  if(unsubBanners){unsubBanners();unsubBanners=null;}
+  if(unsubDiscounts){unsubDiscounts();unsubDiscounts=null;}
+  if(unsub){unsub();unsub=null;}
 }
+
 function startListener(){
-  if(unsub) unsub();
-  // Firestore listener للبيانات الرئيسية (بدون orders وبدون products/categories)
-  unsub = db.collection('restaurants').doc(restId).onSnapshot(doc => {
+  stopAllListeners();
+  const restRef = db.collection('restaurants').doc(restId);
+
+  // 1) Meta document (settings, name, logo, social, delivery, limits, etc.)
+  unsubMeta = restRef.onSnapshot(doc => {
     if(!doc.exists) return;
     try {
       const newData = {id: doc.id, ...doc.data()};
-      // حافظ على الـ orders من RTDB والـ products/categories من الـ subcollections
-      newData.orders_list = restaurant.orders_list || [];
-      newData.products = restaurant.products || [];
-      newData.categories = restaurant.categories || [];
+      // الحفاظ على البيانات المحملة من sub-collections
+      newData.products     = restaurant.products     || [];
+      newData.categories   = restaurant.categories   || [];
+      newData.reviews      = restaurant.reviews      || [];
+      newData.customers    = restaurant.customers    || [];
+      newData.banners      = restaurant.banners      || [];
+      newData.discounts    = restaurant.discounts    || [];
+      newData.orders_list  = restaurant.orders_list  || [];
       restaurant = newData;
-      if(!restaurant.reviews) restaurant.reviews = [];
       updateFsMiniBar(doc.data(), restId);
       renderStats();
-      renderProducts();
-      renderCategories();
-      renderReviews();
       updatePendingBadge();
-      updateReviewsBadge();
-      renderStatsPage();
-      renderCustomers();
       renderDeliveryWorkers();
-    } catch(err) {
-      console.error('Listener render error:', err);
-    }
-  }, function(err) {
-    console.error('Firestore listener disconnected:', err);
-    setTimeout(function(){ startListener(); }, 3000);
+    } catch(err){ console.error('Meta listener error:', err); }
+  }, err => {
+    console.error('Meta listener disconnected:', err);
+    setTimeout(startListener, 3000);
   });
 
-  // RTDB listener للـ orders (real-time سريع)
+  // 2) Products sub-collection
+  unsubProducts = restRef.collection('products').onSnapshot(snap => {
+    try {
+      restaurant.products = snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderProducts();
+      renderStats();
+      renderStatsPage();
+    } catch(err){ console.error('Products listener error:', err); }
+  });
+
+  // 3) Categories sub-collection
+  unsubCategories = restRef.collection('categories').onSnapshot(snap => {
+    try {
+      restaurant.categories = snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderCategories();
+    } catch(err){ console.error('Categories listener error:', err); }
+  });
+
+  // 4) Reviews sub-collection
+  unsubReviews = restRef.collection('reviews').orderBy('createdAt','desc').onSnapshot(snap => {
+    try {
+      restaurant.reviews = snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderReviews();
+      updateReviewsBadge();
+      renderStatsPage();
+    } catch(err){ console.error('Reviews listener error:', err); }
+  });
+
+  // 5) Customers sub-collection
+  unsubCustomers = restRef.collection('customers').onSnapshot(snap => {
+    try {
+      restaurant.customers = snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderCustomers();
+      renderStatsPage();
+    } catch(err){ console.error('Customers listener error:', err); }
+  });
+
+  // 6) Banners sub-collection
+  unsubBanners = restRef.collection('banners').orderBy('order','asc').onSnapshot(snap => {
+    try {
+      restaurant.banners = snap.docs.map(d=>({id:d.id,...d.data()}));
+    } catch(err){ console.error('Banners listener error:', err); }
+  });
+
+  // 7) Discounts sub-collection
+  unsubDiscounts = restRef.collection('discounts').onSnapshot(snap => {
+    try {
+      restaurant.discounts = snap.docs.map(d=>({id:d.id,...d.data()}));
+    } catch(err){ console.error('Discounts listener error:', err); }
+  });
+
+  // 8) RTDB listener للـ orders (real-time سريع)
   const ordersRef = rtdb.ref('orders/' + restId);
   ordersRef.on('value', snap => {
     try {
       const rawOrders = snap.val();
       const newOrders = rawOrders ? Object.values(rawOrders) : [];
-      // Sort by time descending
       newOrders.sort((a,b)=> (b.time||'').localeCompare(a.time||''));
       const newCount = newOrders.length;
       if(newCount > prevOrderCount && document.visibilityState !== 'hidden' && prevOrderCount >= 0){
@@ -1095,9 +1143,7 @@ function startListener(){
       renderStats();
       updatePendingBadge();
       renderStatsPage();
-    } catch(err) {
-      console.error('RTDB orders error:', err);
-    }
+    } catch(err){ console.error('RTDB orders error:', err); }
   });
 }
 function startPolling(){renderAll();prevOrderCount=(restaurant.orders_list||[]).length;}
@@ -1439,7 +1485,6 @@ function onProductUrlImgError(){
 function compressImage(file,maxW,maxH,quality,callback){const reader=new FileReader();reader.onload=e=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>maxW||h>maxH){const ratio=Math.min(maxW/w,maxH/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);const compressed=canvas.toDataURL('image/jpeg',quality);callback(compressed);};img.src=e.target.result;};reader.readAsDataURL(file);}
 function handleProductImg(input){
   const file=input.files[0];if(!file)return;
-  if(!checkStorageLimit(file.size)){input.value='';return;}
   document.getElementById('productImgContent').innerHTML='<div style="font-size:.8rem;color:var(--text2);padding:10px">جاري ضغط الصورة...</div>';
   compressImage(file,800,800,0.75,compressed=>{
     // عرض المعاينة فوراً
@@ -1471,7 +1516,6 @@ function renderLimitBanner(){
   const cCount=(restaurant.categories||[]).length;
   const pb=document.getElementById('productLimitBanner');
   const cb=document.getElementById('catLimitBanner');
-  const sb=document.getElementById('storageLimitBanner');
   if(pb){
     if(pLimit===0){pb.style.display='none';}
     else{
@@ -1492,30 +1536,6 @@ function renderLimitBanner(){
       else{cb.className='limit-banner limit-banner-ok';cb.innerHTML='📁 الأقسام: '+cCount+' / '+cLimit;}
     }
   }
-  // Storage limit banner
-  if(sb){
-    const storageMB=(restaurant.limits?.storageMB)||0;
-    if(storageMB===0){sb.style.display='none';}
-    else{
-      sb.style.display='flex';
-      sb.className='limit-banner limit-banner-ok';
-      sb.innerHTML='☁️ مساحة Storage المتاحة: '+storageMB+' MB — الصور المرفوعة من الجهاز فقط';
-    }
-  }
-}
-
-// التحقق من حد Storage قبل الرفع
-function checkStorageLimit(fileSizeBytes){
-  const storageMB=(restaurant.limits?.storageMB)||0;
-  if(storageMB===0) return true; // غير محدود
-  // نحسب تقريبي: عدد المنتجات × متوسط حجم الصورة ~100KB
-  const usedMBEstimate = (restaurant.products||[]).filter(p=>p.image&&p.image.startsWith('https://firebasestorage')).length * 0.1;
-  const newFileMB = fileSizeBytes / (1024*1024);
-  if(usedMBEstimate + newFileMB > storageMB){
-    showToast('⛔ تجاوزت مساحة Storage المتاحة ('+storageMB+' MB). تواصل مع الإدارة لزيادة المساحة.','error');
-    return false;
-  }
-  return true;
 }
 
 function saveProduct(){
@@ -1534,14 +1554,12 @@ function saveProduct(){
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='جاري الحفظ...';}
 
   const doSave=(finalImgVal)=>{
-    const productId=editingProductId||'prod_'+Date.now();
-    const data={id:productId,name,price,desc:document.getElementById('pDesc').value.trim(),icon:document.getElementById('pIcon').value.trim()||'🍽',categoryId:document.getElementById('pCat').value,available:document.getElementById('pAvailable').checked,image:finalImgVal||null};
-    db.collection('restaurants').doc(restId).collection('products').doc(productId).set(data).then(()=>{
-      if(editingProductId){const pidx=products.findIndex(p=>p.id===editingProductId);if(pidx>-1)products[pidx]=data;}else{products.push(data);}
-      restaurant.products=products;
-      closeModal('productModal');renderProducts();renderStats();showToast('تم حفظ المنتج ✓','success');
+    const docId=editingProductId||'prod_'+Date.now();
+    const data={name,price,desc:document.getElementById('pDesc').value.trim(),icon:document.getElementById('pIcon').value.trim()||'🍽',categoryId:document.getElementById('pCat').value,available:document.getElementById('pAvailable').checked,image:finalImgVal||null,updatedAt:new Date().toISOString()};
+    db.collection('restaurants').doc(restId).collection('products').doc(docId).set(data,{merge:true}).then(()=>{
+      closeModal('productModal');showToast('تم حفظ المنتج ✓','success');
       if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
-    }).catch(e=>{showToast('خطأ في الحفظ: '+e.message,'error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
+    }).catch(e=>{showToast('خطأ في الحفظ','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
   };
 
   // لو الصورة URL جاهز (من Storage أو من رابط مباشر)
@@ -1559,8 +1577,8 @@ function saveProduct(){
     }).catch(e=>{showToast('خطأ في رفع الصورة','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
   });
 }
-function toggleProduct(id){const products=restaurant.products||[];const pidx=products.findIndex(p=>p.id===id);if(pidx===-1)return;products[pidx].available=!products[pidx].available;db.collection('restaurants').doc(restId).collection('products').doc(id).update({available:products[pidx].available}).then(()=>{restaurant.products=products;renderProducts();});}
-function deleteProduct(id){if(!confirm('حذف هذا المنتج؟'))return;db.collection('restaurants').doc(restId).collection('products').doc(id).delete().then(()=>{restaurant.products=(restaurant.products||[]).filter(p=>p.id!==id);renderProducts();renderStats();}).catch(e=>showToast('خطأ في الحذف','error'));}
+function toggleProduct(id){const p=(restaurant.products||[]).find(x=>x.id===id);if(!p)return;db.collection('restaurants').doc(restId).collection('products').doc(id).update({available:!p.available}).catch(e=>showToast('خطأ','error'));}
+function deleteProduct(id){if(!confirm('حذف هذا المنتج؟'))return;db.collection('restaurants').doc(restId).collection('products').doc(id).delete().catch(e=>showToast('خطأ في الحذف','error'));}
 
 // ===== PRODUCT SIZES =====
 let editingSizesProductId=null,tempSizes=[];
@@ -1585,12 +1603,8 @@ function addSizeRow(){tempSizes.push({id:'size_'+Date.now()+'_'+Math.floor(Math.
 function removeSizeRow(i){tempSizes.splice(i,1);renderSizesList();}
 function saveSizes(){
   const cleaned=tempSizes.filter(s=>s.name&&s.name.trim()).map((s,i)=>({id:s.id||('size_'+Date.now()+'_'+i+'_'+Math.floor(Math.random()*1000)),name:s.name.trim(),price:parseFloat(s.price)||0}));
-  const products=restaurant.products||[];
-  const pidx=products.findIndex(p=>p.id===editingSizesProductId);
-  if(pidx===-1)return;
-  products[pidx].sizes=cleaned;
   db.collection('restaurants').doc(restId).collection('products').doc(editingSizesProductId).update({sizes:cleaned}).then(()=>{
-    restaurant.products=products;closeModal('sizesModal');renderProducts();showToast('تم حفظ الأحجام','success');
+    closeModal('sizesModal');showToast('تم حفظ الأحجام','success');
   }).catch(e=>showToast('خطأ في الحفظ','error'));
 }
 
@@ -1617,12 +1631,8 @@ function addExtraRow(){tempExtras.push({id:'extra_'+Date.now()+'_'+Math.floor(Ma
 function removeExtraRow(i){tempExtras.splice(i,1);renderExtrasList();}
 function saveExtras(){
   const cleaned=tempExtras.filter(x=>x.name&&x.name.trim()).map((x,i)=>({id:x.id||('extra_'+Date.now()+'_'+i+'_'+Math.floor(Math.random()*1000)),name:x.name.trim(),price:parseFloat(x.price)||0}));
-  const products=restaurant.products||[];
-  const pidx=products.findIndex(p=>p.id===editingExtrasProductId);
-  if(pidx===-1)return;
-  products[pidx].extras=cleaned;
   db.collection('restaurants').doc(restId).collection('products').doc(editingExtrasProductId).update({extras:cleaned}).then(()=>{
-    restaurant.products=products;closeModal('extrasModal');renderProducts();showToast('تم حفظ الإضافات','success');
+    closeModal('extrasModal');showToast('تم حفظ الإضافات','success');
   }).catch(e=>showToast('خطأ في الحفظ','error'));
 }
 
@@ -1679,13 +1689,12 @@ function saveCat(){
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='جاري الحفظ...';}
 
   const doSave=(finalImgVal)=>{
-    const catId=editingCatId||'cat_'+Date.now();
-    const data={id:catId,name,icon:document.getElementById('catIcon').value.trim()||'📁',desc:document.getElementById('catDesc').value.trim(),image:finalImgVal||null};
-    db.collection('restaurants').doc(restId).collection('categories').doc(catId).set(data).then(()=>{
-      if(editingCatId){const cidx=categories.findIndex(c=>c.id===editingCatId);if(cidx>-1)categories[cidx]=data;}else{categories.push(data);}
-      restaurant.categories=categories;closeModal('catModal');renderCategories();showToast('تم حفظ القسم ✓','success');
+    const docId=editingCatId||'cat_'+Date.now();
+    const data={name,icon:document.getElementById('catIcon').value.trim()||'📁',desc:document.getElementById('catDesc').value.trim(),image:finalImgVal||null,updatedAt:new Date().toISOString()};
+    db.collection('restaurants').doc(restId).collection('categories').doc(docId).set(data,{merge:true}).then(()=>{
+      closeModal('catModal');showToast('تم حفظ القسم ✓','success');
       if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
-    }).catch(e=>{showToast('خطأ في الحفظ: '+e.message,'error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
+    }).catch(e=>{showToast('خطأ في الحفظ','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
   };
 
   // لو الصورة URL جاهز (من Storage أو من رابط مباشر)
@@ -1705,7 +1714,6 @@ function saveCat(){
 }
 function handleCatImg(input){
   const file=input.files[0];if(!file)return;
-  if(!checkStorageLimit(file.size)){input.value='';return;}
   document.getElementById('catImgContent').innerHTML='<div style="font-size:.8rem;color:var(--text2);padding:10px">جاري ضغط الصورة...</div>';
   compressImage(file,1000,600,0.75,compressed=>{
     // عرض المعاينة فوراً
@@ -1767,7 +1775,7 @@ function onCatUrlImgError(){
   const url=document.getElementById('catImgUrl').value.trim();
   if(url){document.getElementById('catImgUrlError').style.display='block';}
 }
-function deleteCat(id){if(!confirm('حذف هذا القسم؟'))return;db.collection('restaurants').doc(restId).collection('categories').doc(id).delete().then(()=>{restaurant.categories=(restaurant.categories||[]).filter(c=>c.id!==id);renderCategories();showToast('تم حذف القسم','error');}).catch(e=>showToast('خطأ في الحذف','error'));}
+function deleteCat(id){if(!confirm('حذف هذا القسم؟'))return;db.collection('restaurants').doc(restId).collection('categories').doc(id).delete().then(()=>showToast('تم حذف القسم','error')).catch(e=>showToast('خطأ في الحذف','error'));}
 
 // ===== REVIEWS =====
 function renderReviews(){
@@ -1842,13 +1850,9 @@ function submitReply(reviewId){
   if(!input)return;
   const text=input.value.trim();
   if(!text){showToast('اكتب ردك أولاً','error');return;}
-  const reviews=restaurant.reviews||[];
-  const ridx=reviews.findIndex(r=>r.id===reviewId);if(ridx===-1)return;
-  reviews[ridx].reply=text;
-  reviews[ridx].replyDate=new Date().toLocaleDateString('ar-EG',{year:'numeric',month:'short',day:'numeric'});
-  db.collection('restaurants').doc(restId).update({reviews:reviews}).then(()=>{
-    restaurant.reviews=reviews;renderReviews();updateReviewsBadge();showToast('تم إرسال الرد','success');
-  });
+  db.collection('restaurants').doc(restId).collection('reviews').doc(reviewId).update({reply:text,replyDate:new Date().toLocaleDateString('ar-EG',{year:'numeric',month:'short',day:'numeric'})}).then(()=>{
+    showToast('تم إرسال الرد','success');
+  }).catch(()=>showToast('خطأ في الإرسال','error'));
 }
 
 // ===== CUSTOMERS =====
@@ -2198,10 +2202,13 @@ function _fmtBytes(b) {
 function _fsPctClass(p) { return p >= 90 ? 'danger' : p >= 60 ? 'warn' : 'ok'; }
 
 function updateFsMiniBar(data, docId) {
+  // نحسب حجم الـ meta document فقط (بدون sub-collections)
+  const SKIP = new Set(['products','categories','reviews','customers','banners','discounts','orders_list']);
   const FS_MAX = 1048576;
   const pathSize = new TextEncoder().encode('restaurants/' + docId).length + 16;
   let total = pathSize;
   for (const k in data) {
+    if (SKIP.has(k)) continue;
     total += new TextEncoder().encode(k).length + 1 + _calcFsSize(data[k]);
   }
   const pct = Math.min(100, (total / FS_MAX) * 100);
@@ -2211,7 +2218,7 @@ function updateFsMiniBar(data, docId) {
   if (bar) { bar.style.width = pct.toFixed(1) + '%'; bar.className = 'fs-mini-bar ' + cls; }
   if (lbl) {
     const icon = cls === 'danger' ? '🔴' : cls === 'warn' ? '🟡' : '🟢';
-    lbl.textContent = icon + ' ' + pct.toFixed(1) + '% / 1MB';
+    lbl.textContent = icon + ' Meta: ' + pct.toFixed(1) + '%';
     lbl.style.color = cls === 'danger' ? '#dc2626' : cls === 'warn' ? '#d97706' : 'var(--text2)';
   }
 }
@@ -2220,64 +2227,47 @@ function openFsDashModal() {
   closeModal && closeModal('fsDashModal');
   document.getElementById('fsDashModal').classList.add('active');
   if (!restaurant) { document.getElementById('fsDashContent').innerHTML = '<p style="color:var(--text2);text-align:center;padding:20px">جاري التحميل...</p>'; return; }
-  const data = restaurant;
+
+  // Meta document فقط (بدون sub-collections)
+  const metaKeys = new Set(['name','username','password','slug','phone','desc','type','duration','createdAt','limits','settings','social','logo','deliveryFee','delivery_workers','orders','color','font','bg','currency','address']);
   const FS_MAX = 1048576;
   const pathSize = new TextEncoder().encode('restaurants/' + restId).length + 16;
-  let total = pathSize;
-  for (const k in data) {
-    total += new TextEncoder().encode(k).length + 1 + _calcFsSize(data[k]);
+  let metaTotal = pathSize;
+  for (const k in restaurant) {
+    if (metaKeys.has(k) || !['products','categories','reviews','customers','banners','discounts','orders_list'].includes(k)) {
+      if(['products','categories','reviews','customers','banners','discounts','orders_list'].includes(k)) continue;
+      metaTotal += new TextEncoder().encode(k).length + 1 + _calcFsSize(restaurant[k]);
+    }
   }
-  const pct = Math.min(100, (total / FS_MAX) * 100);
+  const pct = Math.min(100, (metaTotal / FS_MAX) * 100);
   const cls = _fsPctClass(pct);
 
-  const fieldDefs = [
-    { key: 'products',    label: '🍔 المنتجات' },
-    { key: 'categories',  label: '📁 الأقسام' },
-    { key: 'orders_list', label: '📋 الطلبات' },
-    { key: 'reviews',     label: '⭐ التقييمات' },
-    { key: 'customers',   label: '👥 العملاء' },
-    { key: 'social',      label: '🔗 السوشيال' },
-    { key: 'settings',    label: '⚙️ الإعدادات' },
-    { key: 'logo',        label: '🖼 اللوجو' },
+  // Sub-collection counts
+  const subCols = [
+    { key:'products',   label:'🍔 المنتجات',   count:(restaurant.products||[]).length },
+    { key:'categories', label:'📁 الأقسام',    count:(restaurant.categories||[]).length },
+    { key:'reviews',    label:'⭐ التقييمات',  count:(restaurant.reviews||[]).length },
+    { key:'customers',  label:'👥 العملاء',    count:(restaurant.customers||[]).length },
+    { key:'banners',    label:'🖼 البنرات',    count:(restaurant.banners||[]).length },
+    { key:'discounts',  label:'🏷 الخصومات',  count:(restaurant.discounts||[]).length },
   ];
-  const metaKeys = new Set(['name','username','password','slug','phone','desc','type','duration','createdAt','limits']);
-  let metaSize = 0;
-  for (const k in data) {
-    if (metaKeys.has(k)) metaSize += new TextEncoder().encode(k).length + 1 + _calcFsSize(data[k]);
-  }
 
-  let rows = '';
-  for (const f of fieldDefs) {
-    if (!data[f.key]) continue;
-    const sz = new TextEncoder().encode(f.key).length + 1 + _calcFsSize(data[f.key]);
-    const fp = Math.min(100, (sz / FS_MAX) * 100);
-    const fc = _fsPctClass(fp);
-    const barColor = fc === 'danger' ? '#ef4444' : fc === 'warn' ? '#ffb830' : '#00b894';
-    rows += `<div class="fs-field-row">
-      <div>
-        <div>${f.label}</div>
-        <div style="height:3px;background:#f0f0f0;border-radius:3px;width:160px;margin-top:4px;overflow:hidden">
-          <div style="height:100%;width:${fp.toFixed(1)}%;background:${barColor};border-radius:3px"></div>
-        </div>
-      </div>
-      <div style="text-align:left">
-        <span style="font-weight:700">${_fmtBytes(sz)}</span>
-        <span style="color:var(--text2);font-size:.75rem"> (${fp.toFixed(1)}%)</span>
-      </div>
-    </div>`;
-  }
-  if (metaSize) {
-    rows += `<div class="fs-field-row"><div>📝 بيانات أساسية</div><div><span style="font-weight:700">${_fmtBytes(metaSize)}</span></div></div>`;
-  }
+  let subRows = subCols.map(s =>
+    `<div class="fs-field-row">
+      <div style="display:flex;align-items:center;gap:8px">${s.label}<span style="background:#f0f0f0;border-radius:20px;padding:2px 8px;font-size:.75rem;font-weight:700">${s.count} عنصر</span></div>
+      <div style="font-size:.78rem;color:#059669;font-weight:700">Sub-Collection ✓</div>
+    </div>`
+  ).join('');
 
   const statusMsg = cls === 'danger'
-    ? '🔴 <strong>خطر!</strong> الـ Document قريب جداً من الـ 1MB — يجب حذف طلبات أو بيانات قديمة'
+    ? '🔴 <strong>خطر!</strong> الـ Meta Document كبير — تحقق من الإعدادات'
     : cls === 'warn'
-    ? '🟡 <strong>تحذير</strong> — أكثر من 60% مستخدم، انتبه'
-    : '🟢 <strong>كويس</strong> — مساحة كافية';
+    ? '🟡 <strong>تحذير</strong> — المساحة تزيد عن 60%'
+    : '🟢 <strong>ممتاز</strong> — البيانات الكبيرة محفوظة في Sub-Collections';
 
   document.getElementById('fsDashContent').innerHTML = `
     <div style="margin-bottom:14px">
+      <div style="font-size:.8rem;font-weight:700;color:var(--text2);margin-bottom:8px">📄 Meta Document (الإعدادات والمعلومات الأساسية)</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <span style="font-size:.82rem;font-weight:700">${statusMsg}</span>
         <span style="font-size:.82rem;font-weight:800;color:${cls==='danger'?'#dc2626':cls==='warn'?'#d97706':'#059669'}">${pct.toFixed(1)}%</span>
@@ -2286,12 +2276,13 @@ function openFsDashModal() {
         <div style="height:100%;width:${pct.toFixed(1)}%;background:${cls==='danger'?'#ef4444':cls==='warn'?'#ffb830':'#00b894'};border-radius:10px;transition:width .5s"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--text2);margin-top:4px">
-        <span>${_fmtBytes(total)}</span><span>الحد الأقصى: 1 MB</span>
+        <span>${_fmtBytes(metaTotal)}</span><span>الحد الأقصى: 1 MB</span>
       </div>
     </div>
-    ${rows}
-    <div style="font-size:.74rem;color:var(--text2);margin-top:12px;background:#f5f5f5;border-radius:8px;padding:8px 12px;line-height:1.7">
-      💡 المنتجات والأقسام محفوظة الآن في subcollections منفصلة — الـ Document الرئيسي خفيف. لو كبير: احذف الطلبات القديمة أو التقييمات.
+    <div style="font-size:.8rem;font-weight:700;color:var(--text2);margin:12px 0 8px">📦 Sub-Collections (بدون حد للحجم)</div>
+    ${subRows}
+    <div style="font-size:.74rem;color:var(--text2);margin-top:12px;background:#ecfdf5;border-radius:8px;padding:8px 12px;line-height:1.7;border:1px solid #d1fae5">
+      ✅ المنتجات، الأقسام، التقييمات، العملاء، والخصومات محفوظة الآن في Sub-Collections منفصلة — لا توجد قيود على الحجم.
     </div>
   `;
 }

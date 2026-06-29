@@ -1,65 +1,66 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html dir="rtl" lang="ar">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Migration Tool — نقل البيانات للـ Subcollections</title>
+<title>Migration — نقل البيانات للـ Sub-Collections</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap');
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Tajawal',sans-serif;background:#f5f5f5;color:#1a1a1a;padding:20px}
-  .card{background:#fff;border-radius:16px;padding:28px;max-width:700px;margin:0 auto;box-shadow:0 4px 20px rgba(0,0,0,.08)}
-  h1{font-size:1.3rem;font-weight:900;color:#ff6b2b;margin-bottom:6px}
-  .sub{font-size:.85rem;color:#6b7280;margin-bottom:24px}
-  .warning{background:#fef3c7;border:1px solid #fbbf24;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:.85rem;line-height:1.7}
-  .info{background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:.85rem;line-height:1.7}
-  .log-box{background:#1a1a1a;color:#00ff88;font-family:monospace;font-size:.82rem;border-radius:10px;padding:16px;min-height:200px;max-height:400px;overflow-y:auto;margin-bottom:18px;white-space:pre-wrap;line-height:1.6}
-  .log-err{color:#ff6b6b}
-  .log-warn{color:#ffd93d}
-  .log-ok{color:#6bff88}
-  .btn{width:100%;padding:14px;border-radius:12px;background:#ff6b2b;color:#fff;font-family:'Tajawal',sans-serif;font-size:.95rem;font-weight:700;border:none;cursor:pointer;transition:opacity .2s}
-  .btn:hover{opacity:.9}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
-  .btn-gray{background:#e5e7eb;color:#374151;margin-bottom:10px}
-  .stat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}
-  .stat{background:#f9fafb;border-radius:10px;padding:14px;text-align:center;border:1px solid #e5e7eb}
-  .stat-num{font-size:1.6rem;font-weight:900;color:#ff6b2b}
-  .stat-lbl{font-size:.76rem;color:#6b7280;margin-top:3px}
-  .progress-bar{background:#f0f0f0;border-radius:10px;height:10px;overflow:hidden;margin-bottom:6px}
-  .progress-fill{height:100%;background:#ff6b2b;border-radius:10px;transition:width .3s}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f5f7fa;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:#fff;border-radius:20px;padding:32px;max-width:680px;width:100%;box-shadow:0 4px 32px rgba(0,0,0,.1)}
+  h1{font-size:1.3rem;font-weight:800;margin-bottom:6px;color:#1a1a2e}
+  .sub{font-size:.85rem;color:#666;margin-bottom:24px;line-height:1.6}
+  .warning{background:#fef3c7;border:1px solid #fbbf24;border-radius:10px;padding:14px 16px;font-size:.84rem;color:#92400e;margin-bottom:20px;line-height:1.6}
+  .section{margin-bottom:20px}
+  label{display:block;font-size:.84rem;font-weight:700;margin-bottom:6px;color:#333}
+  input{width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:.9rem;outline:none;transition:border-color .2s}
+  input:focus{border-color:#6366f1}
+  .btn{display:block;width:100%;padding:14px;background:#6366f1;color:#fff;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;transition:background .2s;margin-top:8px}
+  .btn:hover{background:#4f46e5}
+  .btn:disabled{background:#a5a6f0;cursor:not-allowed}
+  #log{margin-top:20px;background:#0f172a;border-radius:12px;padding:16px;font-size:.8rem;font-family:monospace;color:#e2e8f0;max-height:320px;overflow-y:auto;display:none;line-height:1.8}
+  .log-ok{color:#4ade80}
+  .log-warn{color:#fb923c}
+  .log-err{color:#f87171}
+  .log-info{color:#60a5fa}
+  .progress{background:#e5e7eb;border-radius:10px;height:8px;margin-top:16px;display:none}
+  .progress-bar{height:100%;background:#6366f1;border-radius:10px;transition:width .3s;width:0%}
+  .done-box{background:#ecfdf5;border:1px solid #6ee7b7;border-radius:12px;padding:16px;text-align:center;display:none;margin-top:16px}
+  .done-box h2{color:#065f46;font-size:1.1rem;margin-bottom:6px}
+  .done-box p{font-size:.84rem;color:#047857}
 </style>
 </head>
 <body>
 <div class="card">
-  <h1>🔄 Migration Tool — نقل البيانات للـ Subcollections</h1>
-  <p class="sub">هذه الأداة تنقل المنتجات والأقسام من الـ arrays في الـ document الرئيسي إلى subcollections منفصلة — مرة واحدة فقط</p>
+  <h1>🚀 Migration — نقل البيانات للـ Sub-Collections</h1>
+  <p class="sub">هذه الأداة تحوّل بيانات المطاعم من الـ Arrays في document واحد إلى Sub-Collections منفصلة (products, categories, reviews, customers, banners).</p>
 
   <div class="warning">
-    ⚠️ <strong>مهم:</strong> شغّل هذه الأداة مرة واحدة فقط على كل مطعم. بعد النقل، الداشبورد الجديد هيقرأ من الـ subcollections تلقائياً.
-    <br>بعد اكتمال النقل، يمكنك حذف هذه الصفحة من الاستضافة.
+    ⚠️ <strong>مهم قبل التشغيل:</strong> تأكد من عمل نسخة احتياطية من Firestore. هذه العملية تنقل البيانات ولا تحذفها من الـ document الأصلي تلقائياً — ستحتاج لحذفها يدوياً بعد التحقق.
   </div>
 
-  <div class="info">
-    💡 <strong>إيه اللي بيعمله:</strong>
-    <br>• ينسخ كل منتج من array المنتجات إلى <code>restaurants/{id}/products/{productId}</code>
-    <br>• ينسخ كل قسم من array الأقسام إلى <code>restaurants/{id}/categories/{catId}</code>
-    <br>• يحافظ على كل البيانات — لا شيء يُحذف من الـ document الأصلي
+  <div class="section">
+    <label>🔑 اختر المطعم للـ Migration</label>
+    <input type="text" id="restIdInput" placeholder="أدخل ID المطعم أو اتركه فارغاً لمعالجة الكل">
   </div>
 
-  <div id="statSection" style="display:none">
-    <div class="stat-row">
-      <div class="stat"><div class="stat-num" id="statRestaurants">-</div><div class="stat-lbl">مطاعم</div></div>
-      <div class="stat"><div class="stat-num" id="statProducts">-</div><div class="stat-lbl">منتجات</div></div>
-      <div class="stat"><div class="stat-num" id="statCategories">-</div><div class="stat-lbl">أقسام</div></div>
-    </div>
-    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-    <div id="progressLabel" style="font-size:.78rem;color:#6b7280;margin-bottom:16px;text-align:center"></div>
+  <div class="section">
+    <label><input type="checkbox" id="chkProducts" checked> نقل المنتجات (products)</label>
+    <label style="margin-top:8px"><input type="checkbox" id="chkCategories" checked> نقل الأقسام (categories)</label>
+    <label style="margin-top:8px"><input type="checkbox" id="chkReviews" checked> نقل التقييمات (reviews)</label>
+    <label style="margin-top:8px"><input type="checkbox" id="chkCustomers" checked> نقل العملاء (customers)</label>
+    <label style="margin-top:8px"><input type="checkbox" id="chkBanners" checked> نقل البنرات (banners)</label>
+    <label style="margin-top:8px"><input type="checkbox" id="chkCleanup"> حذف الـ Arrays من الـ document بعد النقل الناجح</label>
   </div>
 
-  <div class="log-box" id="logBox">انتظر... اضغط "فحص" أولاً لمعرفة ما سيتم نقله.</div>
+  <button class="btn" onclick="startMigration()">▶ ابدأ الـ Migration</button>
 
-  <button class="btn btn-gray" id="btnCheck" onclick="checkData()">🔍 فحص البيانات أولاً</button>
-  <button class="btn" id="btnMigrate" onclick="runMigration()" disabled>🚀 ابدأ النقل</button>
+  <div class="progress" id="progressBar"><div class="progress-bar" id="progressFill"></div></div>
+  <div id="log"></div>
+  <div class="done-box" id="doneBox">
+    <h2>✅ تم الـ Migration بنجاح!</h2>
+    <p id="doneSummary"></p>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -77,128 +78,136 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let restaurants = [];
+let logEl, progressEl, fillEl;
 
-function log(msg, type=''){
-  const box = document.getElementById('logBox');
-  const cls = type === 'err' ? 'log-err' : type === 'warn' ? 'log-warn' : type === 'ok' ? 'log-ok' : '';
-  const line = document.createElement('div');
-  if(cls) line.className = cls;
-  line.textContent = msg;
-  box.appendChild(line);
-  box.scrollTop = box.scrollHeight;
+function log(msg, type='info') {
+  if(!logEl) return;
+  logEl.style.display='block';
+  logEl.innerHTML += `<div class="log-${type}">${msg}</div>`;
+  logEl.scrollTop = logEl.scrollHeight;
 }
 
-function setProgress(done, total){
-  const pct = total > 0 ? Math.round((done/total)*100) : 0;
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressLabel').textContent = done + ' / ' + total + ' (' + pct + '%)';
+function setProgress(pct) {
+  progressEl.style.display='block';
+  fillEl.style.width = pct + '%';
 }
 
-async function checkData(){
-  document.getElementById('logBox').innerHTML = '';
-  document.getElementById('btnCheck').disabled = true;
-  log('⏳ جاري جلب بيانات المطاعم...');
+async function migrateRestaurant(doc) {
+  const data = doc.data();
+  const id = doc.id;
+  const restRef = db.collection('restaurants').doc(id);
+  const batch = db.batch();
+  let count = 0;
 
-  try{
-    const snap = await db.collection('restaurants').get();
-    restaurants = snap.docs.map(d => ({id: d.id, ...d.data()}));
-    let totalProds = 0, totalCats = 0;
+  const doProducts   = document.getElementById('chkProducts').checked;
+  const doCategories = document.getElementById('chkCategories').checked;
+  const doReviews    = document.getElementById('chkReviews').checked;
+  const doCustomers  = document.getElementById('chkCustomers').checked;
+  const doBanners    = document.getElementById('chkBanners').checked;
+  const doCleanup    = document.getElementById('chkCleanup').checked;
 
-    for(const r of restaurants){
-      const prods = r.products || [];
-      const cats = r.categories || [];
-      totalProds += prods.length;
-      totalCats += cats.length;
-      log(`🍽 ${r.name || r.id}: ${prods.length} منتج، ${cats.length} قسم`);
+  const collections = [
+    { key: 'products',   enabled: doProducts,   idFn: p => p.id || ('prod_'+Date.now()+'_'+Math.random().toString(36).slice(2)) },
+    { key: 'categories', enabled: doCategories, idFn: c => c.id || ('cat_'+Date.now()+'_'+Math.random().toString(36).slice(2)) },
+    { key: 'reviews',    enabled: doReviews,    idFn: r => r.id || ('rv_'+Date.now()+'_'+Math.random().toString(36).slice(2)) },
+    { key: 'customers',  enabled: doCustomers,  idFn: c => c.id || ('cust_'+Date.now()+'_'+Math.random().toString(36).slice(2)) },
+    { key: 'banners',    enabled: doBanners,    idFn: b => b.id || ('ban_'+Date.now()+'_'+Math.random().toString(36).slice(2)) },
+  ];
+
+  const fieldsToClean = [];
+
+  for (const col of collections) {
+    if (!col.enabled) continue;
+    const items = data[col.key];
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      log(`  ↳ ${col.key}: فارغ أو غير موجود — تخطي`, 'warn');
+      continue;
     }
+    log(`  ↳ نقل ${items.length} عنصر من ${col.key}...`, 'info');
+    // Firestore batch max 500 ops — split if needed
+    let batchOps = 0;
+    let localBatch = db.batch();
+    for (const item of items) {
+      const docId = col.idFn(item);
+      const itemData = {...item};
+      delete itemData.id; // id is the doc key, not a field
+      localBatch.set(restRef.collection(col.key).doc(docId), itemData, {merge: true});
+      batchOps++;
+      count++;
+      if (batchOps >= 400) {
+        await localBatch.commit();
+        localBatch = db.batch();
+        batchOps = 0;
+      }
+    }
+    if (batchOps > 0) await localBatch.commit();
+    log(`    ✅ ${col.key}: تم نقل ${items.length} عنصر`, 'ok');
+    if (doCleanup) fieldsToClean.push(col.key);
+  }
 
-    document.getElementById('statSection').style.display = 'block';
-    document.getElementById('statRestaurants').textContent = restaurants.length;
-    document.getElementById('statProducts').textContent = totalProds;
-    document.getElementById('statCategories').textContent = totalCats;
+  // Cleanup: remove arrays from main document
+  if (doCleanup && fieldsToClean.length > 0) {
+    const cleanUpdate = {};
+    for (const f of fieldsToClean) {
+      cleanUpdate[f] = firebase.firestore.FieldValue.delete();
+    }
+    await restRef.update(cleanUpdate);
+    log(`  🧹 تم حذف الـ Arrays من الـ document: [${fieldsToClean.join(', ')}]`, 'warn');
+  }
 
-    log('');
-    log('✅ الفحص اكتمل — ' + restaurants.length + ' مطعم، ' + totalProds + ' منتج، ' + totalCats + ' قسم جاهزة للنقل.', 'ok');
-    log('اضغط "ابدأ النقل" للمتابعة.', 'ok');
+  return count;
+}
 
-    if(totalProds > 0 || totalCats > 0){
-      document.getElementById('btnMigrate').disabled = false;
+async function startMigration() {
+  logEl = document.getElementById('log');
+  progressEl = document.getElementById('progressBar');
+  fillEl = document.getElementById('progressFill');
+  const doneBox = document.getElementById('doneBox');
+  doneBox.style.display='none';
+  logEl.innerHTML = '';
+  logEl.style.display='block';
+
+  const btn = document.querySelector('.btn');
+  btn.disabled = true;
+  btn.textContent = 'جاري الـ Migration...';
+
+  const specificId = document.getElementById('restIdInput').value.trim();
+  let totalMoved = 0;
+  let restCount = 0;
+
+  try {
+    let docs = [];
+    if (specificId) {
+      const snap = await db.collection('restaurants').doc(specificId).get();
+      if (!snap.exists) { log(`❌ المطعم "${specificId}" غير موجود`, 'err'); btn.disabled=false; btn.textContent='▶ ابدأ الـ Migration'; return; }
+      docs = [snap];
     } else {
-      log('ℹ️ لا توجد بيانات للنقل في الـ arrays.', 'warn');
-    }
-  } catch(e){
-    log('❌ خطأ: ' + e.message, 'err');
-  }
-  document.getElementById('btnCheck').disabled = false;
-}
-
-async function runMigration(){
-  document.getElementById('btnMigrate').disabled = true;
-  document.getElementById('btnCheck').disabled = true;
-  log('');
-  log('🚀 بدء النقل...');
-
-  let totalItems = 0;
-  for(const r of restaurants){
-    totalItems += (r.products||[]).length + (r.categories||[]).length;
-  }
-
-  let done = 0;
-  setProgress(0, totalItems);
-
-  for(const r of restaurants){
-    log('');
-    log('📂 معالجة مطعم: ' + (r.name || r.id));
-
-    const products = r.products || [];
-    const categories = r.categories || [];
-
-    // Migrate products
-    for(const p of products){
-      try{
-        const pid = p.id || ('prod_' + Date.now() + '_' + Math.random().toString(36).substr(2,5));
-        await db.collection('restaurants').doc(r.id).collection('products').doc(pid).set({...p, id: pid});
-        done++;
-        setProgress(done, totalItems);
-        log('  ✓ منتج: ' + (p.name || pid), 'ok');
-      } catch(e){
-        log('  ❌ فشل منتج ' + (p.name||p.id) + ': ' + e.message, 'err');
-        done++;
-        setProgress(done, totalItems);
-      }
-      // Small delay to avoid rate limit
-      await new Promise(r=>setTimeout(r,50));
+      const snap = await db.collection('restaurants').get();
+      docs = snap.docs;
     }
 
-    // Migrate categories
-    for(const c of categories){
-      try{
-        const cid = c.id || ('cat_' + Date.now() + '_' + Math.random().toString(36).substr(2,5));
-        await db.collection('restaurants').doc(r.id).collection('categories').doc(cid).set({...c, id: cid});
-        done++;
-        setProgress(done, totalItems);
-        log('  ✓ قسم: ' + (c.name || cid), 'ok');
-      } catch(e){
-        log('  ❌ فشل قسم ' + (c.name||c.id) + ': ' + e.message, 'err');
-        done++;
-        setProgress(done, totalItems);
-      }
-      await new Promise(r=>setTimeout(r,50));
+    log(`📋 تم العثور على ${docs.length} مطعم للـ Migration`, 'info');
+
+    for (let i = 0; i < docs.length; i++) {
+      const doc = docs[i];
+      log(`\n🏪 [${i+1}/${docs.length}] مطعم: ${doc.data().name || doc.id}`, 'info');
+      const moved = await migrateRestaurant(doc);
+      totalMoved += moved;
+      restCount++;
+      setProgress(Math.round(((i+1)/docs.length)*100));
     }
 
-    log('  ✅ انتهى مطعم ' + (r.name||r.id), 'ok');
+    log(`\n✅ انتهى الـ Migration! نُقل ${totalMoved} عنصر في ${restCount} مطعم.`, 'ok');
+    doneBox.style.display='block';
+    document.getElementById('doneSummary').textContent = `نُقل ${totalMoved} عنصر في ${restCount} مطعم بنجاح.`;
+
+  } catch(err) {
+    log(`❌ خطأ: ${err.message}`, 'err');
+    console.error(err);
   }
 
-  log('');
-  log('🎉 اكتمل النقل! جميع البيانات تم نقلها للـ subcollections.', 'ok');
-  log('');
-  log('📌 الخطوة التالية:', 'warn');
-  log('  • ارفع dashboard.html الجديد على الاستضافة', 'warn');
-  log('  • ارفع _menu.html الجديد على الاستضافة', 'warn');
-  log('  • بعد التأكيد أن كل شيء يعمل يمكنك حذف migrate.html', 'warn');
-  
-  document.getElementById('btnCheck').disabled = false;
+  btn.disabled = false;
+  btn.textContent = '▶ ابدأ الـ Migration مرة أخرى';
 }
 </script>
 </body>

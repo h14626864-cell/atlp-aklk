@@ -345,25 +345,12 @@ function loadRestaurants(){
   if(unsubRestaurants){unsubRestaurants();}
   unsubRestaurants = db.collection('restaurants').onSnapshot(snapshot => {
     restaurants = [];
-    const promises = [];
     snapshot.forEach(doc => {
-      const r = {id: doc.id, ...doc.data()};
-      restaurants.push(r);
-      // جلب عدد المنتجات والأقسام من الـ subcollections
-      const p = Promise.all([
-        db.collection('restaurants').doc(r.id).collection('products').get(),
-        db.collection('restaurants').doc(r.id).collection('categories').get()
-      ]).then(([ps, cs]) => {
-        r._prodCount = ps.size;
-        r._catCount = cs.size;
-      }).catch(()=>{r._prodCount=(r.products||[]).length;r._catCount=(r.categories||[]).length;});
-      promises.push(p);
+      restaurants.push({id: doc.id, ...doc.data()});
     });
-    Promise.all(promises).then(() => {
-      renderTable();
-      renderStats();
-    }).catch(()=>{renderTable();renderStats();});
     hideLoading();
+    renderTable();
+    updateStats();
   }, err => {
     hideLoading();
     showToast('خطأ في تحميل البيانات: '+err.message,'error');
@@ -507,11 +494,10 @@ function renderTable(){
       <td><div style="display:flex;align-items:center;gap:12px">${r.logo?`<img src="${r.logo}" class="rest-logo">`:`<div class="rest-logo-placeholder">${r.name.charAt(0)}</div>`}
         <div><div style="font-weight:700">${r.name}</div><div style="font-size:.78rem;color:var(--text2)">${r.phone||''}</div>
         <div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap">
-          ${(()=>{const pl=r.limits?.products||0;const cl=r.limits?.categories||0;const sl=r.limits?.storageMB||0;const pu=r._prodCount!==undefined?r._prodCount:(r.products||[]).length;const cu=r._catCount!==undefined?r._catCount:(r.categories||[]).length;
+          ${(()=>{const pl=r.limits?.products||0;const cl=r.limits?.categories||0;const pu=(r.products||[]).length;const cu=(r.categories||[]).length;
             const pb=pl===0?'<span class="limit-badge ok">🍔 بلا حد</span>':(pu>=pl?'<span class="limit-badge full">🍔 '+pu+'/'+pl+' ممتلئ</span>':'<span class="limit-badge">🍔 '+pu+'/'+pl+'</span>');
             const cb=cl===0?'<span class="limit-badge ok">📁 بلا حد</span>':(cu>=cl?'<span class="limit-badge full">📁 '+cu+'/'+cl+' ممتلئ</span>':'<span class="limit-badge">📁 '+cu+'/'+cl+'</span>');
-            const sb=sl===0?'':'<span class="limit-badge">☁️ '+sl+'MB</span>';
-            return pb+cb+sb;})()}
+            return pb+cb;})()}
         </div>
         </div></div></td>
       <td><span class="badge badge-orange">دليفري</span></td>
@@ -590,35 +576,20 @@ function openLimitModal(id){
   document.getElementById('limitRestName').textContent = '🍽 ' + r.name;
   document.getElementById('limitProducts').value = r.limits?.products || 0;
   document.getElementById('limitCategories').value = r.limits?.categories || 0;
-  document.getElementById('limitStorageMB').value = r.limits?.storageMB || 0;
-  // جلب عدد المنتجات والأقسام من الـ subcollections
-  Promise.all([
-    db.collection('restaurants').doc(id).collection('products').get(),
-    db.collection('restaurants').doc(id).collection('categories').get()
-  ]).then(([ps, cs]) => {
-    document.getElementById('limitProductsUsage').textContent = 'الحالي: ' + ps.size + ' منتج';
-    document.getElementById('limitCategoriesUsage').textContent = 'الحالي: ' + cs.size + ' قسم';
-  }).catch(()=>{
-    const prodCount = (r.products||[]).length;
-    const catCount = (r.categories||[]).length;
-    document.getElementById('limitProductsUsage').textContent = 'الحالي: ' + prodCount + ' منتج';
-    document.getElementById('limitCategoriesUsage').textContent = 'الحالي: ' + catCount + ' قسم';
-  });
-  const storageMB = r.limits?.storageMB || 0;
-  document.getElementById('limitStorageUsage').textContent = storageMB > 0
-    ? 'المتاح: ' + storageMB + ' MB — كل صورة ~100KB أي ~' + Math.floor(storageMB * 10) + ' صورة تقريباً'
-    : 'غير محدود حالياً';
+  const prodCount = (r.products||[]).length;
+  const catCount = (r.categories||[]).length;
+  document.getElementById('limitProductsUsage').textContent = 'الحالي: ' + prodCount + ' منتج';
+  document.getElementById('limitCategoriesUsage').textContent = 'الحالي: ' + catCount + ' قسم';
   document.getElementById('limitModal').classList.add('active');
 }
 async function saveLimit(){
   if(!limitingId) return;
   const products = parseInt(document.getElementById('limitProducts').value) || 0;
   const categories = parseInt(document.getElementById('limitCategories').value) || 0;
-  const storageMB = parseInt(document.getElementById('limitStorageMB').value) || 0;
   const btn = document.querySelector('#limitModal .btn-primary');
   btn.disabled = true; btn.textContent = 'جاري الحفظ...';
   try{
-    await db.collection('restaurants').doc(limitingId).update({ limits: { products, categories, storageMB } });
+    await db.collection('restaurants').doc(limitingId).update({ limits: { products, categories } });
     showToast('تم حفظ الليميت ✓','success');
     closeModal('limitModal');
   } catch(e){
@@ -667,19 +638,10 @@ async function openFsSizeModal(id) {
   document.getElementById('fsSizeModal').classList.add('active');
 
   try {
-    const [snap, prodSnap, catSnap] = await Promise.all([
-      db.collection('restaurants').doc(id).get(),
-      db.collection('restaurants').doc(id).collection('products').get(),
-      db.collection('restaurants').doc(id).collection('categories').get()
-    ]);
+    const snap = await db.collection('restaurants').doc(id).get();
     if (!snap.exists) { document.getElementById('fsSizeContent').innerHTML = '<p style="color:var(--red)">لم يُعثر على المطعم</p>'; return; }
     const data = snap.data();
     const r = restaurants.find(x => x.id === id);
-    const subcollInfo = `<div style="background:#ecfdf5;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.8rem;color:#059669;line-height:1.7">
-      ✅ <strong>Subcollections (خارج الـ 1MB):</strong><br>
-      🍔 المنتجات: <strong>${prodSnap.size}</strong> منتج في subcollection<br>
-      📁 الأقسام: <strong>${catSnap.size}</strong> قسم في subcollection
-    </div>`;
 
     const FS_MAX = 1048576; // 1 MiB
 
@@ -743,7 +705,6 @@ async function openFsSizeModal(id) {
       : '🟢 كويس — مساحة كافية';
 
     document.getElementById('fsSizeContent').innerHTML = `
-      ${subcollInfo}
       <div class="fs-modal-card">
         <div class="fs-name">🍽 ${r ? r.name : id}</div>
         <div class="fs-bar-wrap" style="height:12px;margin-bottom:12px">
@@ -790,14 +751,7 @@ async function openFsSizeModal(id) {
         <div class="current-usage" id="limitCategoriesUsage"></div>
       </div>
     </div>
-    <div class="form-group" style="margin-bottom:10px">
-      <label>☁️ مساحة Storage المتاحة (MB)</label>
-      <input type="number" id="limitStorageMB" min="0" max="10000" placeholder="مثال: 500" step="50">
-      <div class="current-usage" id="limitStorageUsage"></div>
-    </div>
-    <div style="font-size:.78rem;color:var(--text2);background:#f5f5f5;border-radius:8px;padding:8px 12px;margin-bottom:14px;line-height:1.6">
-      💡 <strong>0 = غير محدود.</strong> المساحة للصور المرفوعة من الجهاز فقط (الروابط الخارجية لا تحسب). صور المنتجات ~50-200KB للصورة.
-    </div>
+    <div style="font-size:.78rem;color:var(--text2);margin-bottom:4px;">0 = مفيش حد (غير محدود)</div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('limitModal')">إلغاء</button>
       <button class="btn-primary" onclick="saveLimit()">💾 حفظ الليميت</button>
