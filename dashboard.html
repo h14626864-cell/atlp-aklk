@@ -1481,6 +1481,7 @@ function onProductUrlImgError(){
   if(tick)tick.style.display='none';
   const url=document.getElementById('productImgUrl').value.trim();
   if(url){document.getElementById('productImgUrlError').style.display='block';}
+  // لا تمسح productImgData — الرابط ممكن يكون صح بس CORS يمنع التحميل
 }
 function compressImage(file,maxW,maxH,quality,callback){const reader=new FileReader();reader.onload=e=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>maxW||h>maxH){const ratio=Math.min(maxW/w,maxH/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);const compressed=canvas.toDataURL('image/jpeg',quality);callback(compressed);};img.src=e.target.result;};reader.readAsDataURL(file);}
 function handleProductImg(input){
@@ -1562,12 +1563,12 @@ function saveProduct(){
     }).catch(e=>{showToast('خطأ في الحفظ','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
   };
 
-  // لو الصورة URL جاهز (من Storage أو من رابط مباشر)
-  if(!productImgData || !productImgData.startsWith('data:')){
+  // لو مفيش صورة أو لينك خارجي أو رابط Firebase → احفظ فوراً بدون رفع
+  if(!productImgData || productImgData.startsWith('http')){
     doSave(productImgData);
     return;
   }
-  // لو لسه base64 (الرفع لم يكتمل بعد) → ارفع الآن ثم احفظ
+  // لو base64 (رفع من الجهاز ولم يكتمل) → ارفع الآن ثم احفظ
   showToast('جاري رفع الصورة...','success');
   const fileName='products/'+restId+'/'+(editingProductId||'prod_'+Date.now())+'_'+Date.now()+'.jpg';
   const imgRef=storage.ref().child(fileName);
@@ -1575,7 +1576,7 @@ function saveProduct(){
     imgRef.put(blob,{contentType:'image/jpeg'}).then(snap=>{
       snap.ref.getDownloadURL().then(url=>{productImgData=url;doSave(url);});
     }).catch(e=>{showToast('خطأ في رفع الصورة','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
-  });
+  }).catch(e=>{showToast('خطأ في تحضير الصورة','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
 }
 function toggleProduct(id){const p=(restaurant.products||[]).find(x=>x.id===id);if(!p)return;db.collection('restaurants').doc(restId).collection('products').doc(id).update({available:!p.available}).catch(e=>showToast('خطأ','error'));}
 function deleteProduct(id){if(!confirm('حذف هذا المنتج؟'))return;db.collection('restaurants').doc(restId).collection('products').doc(id).delete().catch(e=>showToast('خطأ في الحذف','error'));}
@@ -1697,12 +1698,12 @@ function saveCat(){
     }).catch(e=>{showToast('خطأ في الحفظ','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
   };
 
-  // لو الصورة URL جاهز (من Storage أو من رابط مباشر)
-  if(!catImgData || !catImgData.startsWith('data:')){
+  // لو مفيش صورة أو لينك خارجي أو رابط Firebase → احفظ فوراً بدون رفع
+  if(!catImgData || catImgData.startsWith('http')){
     doSave(catImgData);
     return;
   }
-  // لو لسه base64 → ارفع الآن ثم احفظ
+  // لو base64 (رفع من الجهاز ولم يكتمل) → ارفع الآن ثم احفظ
   showToast('جاري رفع الصورة...','success');
   const fileName='categories/'+restId+'/'+(editingCatId||'cat_'+Date.now())+'_'+Date.now()+'.jpg';
   const imgRef=storage.ref().child(fileName);
@@ -1710,7 +1711,7 @@ function saveCat(){
     imgRef.put(blob,{contentType:'image/jpeg'}).then(snap=>{
       snap.ref.getDownloadURL().then(url=>{catImgData=url;doSave(url);});
     }).catch(e=>{showToast('خطأ في رفع الصورة','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
-  });
+  }).catch(e=>{showToast('خطأ في تحضير الصورة','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
 }
 function handleCatImg(input){
   const file=input.files[0];if(!file)return;
