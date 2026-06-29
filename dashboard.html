@@ -1551,6 +1551,12 @@ function saveProduct(){
       return;
     }
   }
+  // لو تاب الـ URL مفتوح → اقرأ اللينك مباشرةً من الـ input بدون انتظار
+  const urlTabActive=document.getElementById('productTabUrl')&&document.getElementById('productTabUrl').classList.contains('active');
+  if(urlTabActive){
+    const directUrl=document.getElementById('productImgUrl').value.trim();
+    productImgData=directUrl||null;
+  }
   const saveBtn=document.querySelector('#productModal .btn-save');
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='جاري الحفظ...';}
 
@@ -1563,7 +1569,7 @@ function saveProduct(){
     }).catch(e=>{showToast('خطأ في الحفظ','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
   };
 
-  // لو مفيش صورة أو لينك خارجي أو رابط Firebase → احفظ فوراً بدون رفع
+  // لو مفيش صورة أو لينك → احفظ فوراً بدون رفع
   if(!productImgData || productImgData.startsWith('http')){
     doSave(productImgData);
     return;
@@ -1686,6 +1692,12 @@ function saveCat(){
       return;
     }
   }
+  // لو تاب الـ URL مفتوح → اقرأ اللينك مباشرةً من الـ input بدون انتظار
+  const catUrlTabActive=document.getElementById('catTabUrl')&&document.getElementById('catTabUrl').classList.contains('active');
+  if(catUrlTabActive){
+    const directUrl=document.getElementById('catImgUrl').value.trim();
+    catImgData=directUrl||null;
+  }
   const saveBtn=document.querySelector('#catModal .btn-save');
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='جاري الحفظ...';}
 
@@ -1698,7 +1710,7 @@ function saveCat(){
     }).catch(e=>{showToast('خطأ في الحفظ','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
   };
 
-  // لو مفيش صورة أو لينك خارجي أو رابط Firebase → احفظ فوراً بدون رفع
+  // لو مفيش صورة أو لينك → احفظ فوراً بدون رفع
   if(!catImgData || catImgData.startsWith('http')){
     doSave(catImgData);
     return;
