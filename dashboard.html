@@ -806,10 +806,7 @@
       <button class="btn-close" onclick="closeModal('fsDashModal')">✕</button>
     </div>
     <div id="fsDashContent" style="min-height:60px"></div>
-    <div class="modal-footer">
-      <button class="btn-cancel" style="background:#fef2f2;color:#dc2626;font-weight:700" onclick="cleanBase64FromFirestore()">🧹 تنظيف الـ base64</button>
-      <button class="btn-save" onclick="closeModal('fsDashModal')">تم</button>
-    </div>
+    <div class="modal-footer"><button class="btn-save" onclick="closeModal('fsDashModal')">تم</button></div>
   </div>
 </div>
 
@@ -988,15 +985,25 @@ function tryUsernameLogin(u, p){
   }).catch(err => showLoginError('خطأ في الاتصال'));
 }
 
-function foundRestaurant(doc){
+async function foundRestaurant(doc){
   restaurant = {id: doc.id, ...doc.data()};
   restId = restaurant.id;
+  // جلب البيانات من الـ subcollections عند أول تسجيل دخول
+  const [prodSnap, catSnap, revSnap, custSnap] = await Promise.all([
+    db.collection('restaurants').doc(restId).collection('products').get(),
+    db.collection('restaurants').doc(restId).collection('categories').get(),
+    db.collection('restaurants').doc(restId).collection('reviews').get(),
+    db.collection('restaurants').doc(restId).collection('customers').get()
+  ]);
+  restaurant.products = prodSnap.docs.map(d=>({id:d.id,...d.data()}));
+  restaurant.categories = catSnap.docs.map(d=>({id:d.id,...d.data()}));
+  restaurant.reviews = revSnap.docs.map(d=>({id:d.id,...d.data()}));
+  restaurant.customers = custSnap.docs.map(d=>({id:d.id,...d.data()}));
   document.getElementById('loginPage').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
-  if(!restaurant.reviews)restaurant.reviews=[];
-  prevOrderCount = (restaurant.orders_list||[]).length; // Set baseline before listener
+  prevOrderCount = (restaurant.orders_list||[]).length;
   setupDashboard();
-  startListener(); // Real-time instead of polling
+  startListener();
 }
 function showLoginError(msg){const el=document.getElementById('loginError');el.textContent=msg;el.style.display='block';setTimeout(()=>el.style.display='none',3500);}
 document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
@@ -1028,13 +1035,23 @@ function refreshData(){
 }
 function startListener(){
   if(unsub) unsub();
-  // Firestore listener للبيانات الرئيسية (بدون orders)
-  unsub = db.collection('restaurants').doc(restId).onSnapshot(doc => {
+  // Firestore listener للبيانات الرئيسية فقط
+  unsub = db.collection('restaurants').doc(restId).onSnapshot(async doc => {
     if(!doc.exists) return;
     try {
       const newData = {id: doc.id, ...doc.data()};
-      // حافظ على الـ orders من RTDB
       newData.orders_list = restaurant.orders_list || [];
+      // جلب البيانات من الـ subcollections
+      const [prodSnap, catSnap, revSnap, custSnap] = await Promise.all([
+        db.collection('restaurants').doc(restId).collection('products').get(),
+        db.collection('restaurants').doc(restId).collection('categories').get(),
+        db.collection('restaurants').doc(restId).collection('reviews').get(),
+        db.collection('restaurants').doc(restId).collection('customers').get()
+      ]);
+      newData.products = prodSnap.docs.map(d=>({id:d.id,...d.data()}));
+      newData.categories = catSnap.docs.map(d=>({id:d.id,...d.data()}));
+      newData.reviews = revSnap.docs.map(d=>({id:d.id,...d.data()}));
+      newData.customers = custSnap.docs.map(d=>({id:d.id,...d.data()}));
       restaurant = newData;
       if(!restaurant.reviews) restaurant.reviews = [];
       updateFsMiniBar(doc.data(), restId);
@@ -1344,9 +1361,7 @@ function renderProducts(){
   }).join('');
 }
 function openProductModal(id=null){
-  editingProductId=id;productImgData=null;productImgUploading=false;
-  const saveBtn=document.querySelector('#productModal .btn-save');
-  if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
+  editingProductId=id;productImgData=null;
   const cats=restaurant.categories||[];
   document.getElementById('pCat').innerHTML='<option value="">اختر القسم</option>'+cats.map(c=>`<option value="${c.id}">${c.icon||''} ${c.name}</option>`).join('');
   if(id){
@@ -1382,18 +1397,13 @@ function switchProductImgTab(tab){
   document.getElementById('productTabUrl').classList.toggle('active',!isUpload);
   document.getElementById('productUploadSection').style.display=isUpload?'block':'none';
   document.getElementById('productUrlSection').style.display=isUpload?'none':'block';
-  // reset uploading flag دايماً عند التبديل
-  productImgUploading=false;
-  const saveBtn=document.querySelector('#productModal .btn-save');
   if(isUpload){
     productImgData=null;
     document.getElementById('productImgInput').value='';
     const ptick=document.getElementById('productImgUrlTick');if(ptick)ptick.style.display='none';
     document.getElementById('productImgContent').innerHTML='<div style="font-size:1.8rem;margin-bottom:4px">📷</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة المنتج</p>';
-    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
   }else{
     productImgData=null;
-    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
     const existingUrl=document.getElementById('productImgUrl').value.trim();
     if(existingUrl){handleProductImgUrl(existingUrl);}
   }
@@ -1422,48 +1432,27 @@ function onProductUrlImgError(){
   if(url){document.getElementById('productImgUrlError').style.display='block';}
 }
 function compressImage(file,maxW,maxH,quality,callback){const reader=new FileReader();reader.onload=e=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>maxW||h>maxH){const ratio=Math.min(maxW/w,maxH/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0,w,h);const compressed=canvas.toDataURL('image/jpeg',quality);callback(compressed);};img.src=e.target.result;};reader.readAsDataURL(file);}
-let productImgUploading=false;
 function handleProductImg(input){
   const file=input.files[0];if(!file)return;
-  productImgUploading=true;
-  productImgData=null;
-  document.getElementById('productImgContent').innerHTML='<div style="font-size:.8rem;color:var(--text2);padding:10px">⏳ جاري رفع الصورة... لا تضغط حفظ حتى تكتمل</div>';
-  const saveBtn=document.querySelector('#productModal .btn-save');
-  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='انتظر رفع الصورة...';}
+  document.getElementById('productImgContent').innerHTML='<div style="font-size:.8rem;color:var(--text2);padding:10px">جاري ضغط الصورة...</div>';
   compressImage(file,800,800,0.75,compressed=>{
-    // رفع الصورة على Firebase Storage مباشرة (بدون حفظ base64)
+    // عرض المعاينة فوراً
+    document.getElementById('productImgContent').innerHTML=`<img src="${compressed}" class="img-preview">`;
+    productImgData=compressed; // مؤقتاً حتى يتم الرفع
+    // رفع الصورة على Firebase Storage
     const fileName='products/'+restId+'/'+(editingProductId||'new_'+Date.now())+'_'+Date.now()+'.jpg';
     const imgRef=storage.ref().child(fileName);
+    // تحويل base64 لـ blob
     fetch(compressed).then(r=>r.blob()).then(blob=>{
       const uploadTask=imgRef.put(blob,{contentType:'image/jpeg'});
       uploadTask.on('state_changed',
-        snap=>{
-          const pct=Math.round(snap.bytesTransferred/snap.totalBytes*100);
-          document.getElementById('productImgContent').innerHTML=`<div style="font-size:.8rem;color:var(--text2);padding:10px">⬆️ جاري الرفع ${pct}%...</div>`;
-        },
-        err=>{
-          console.error('Upload error:',err);
-          showToast('خطأ في رفع الصورة: '+err.message,'error');
-          productImgUploading=false;
-          productImgData=null;
-          document.getElementById('productImgContent').innerHTML='<div style="color:#e53935;font-size:.8rem;padding:10px">❌ فشل الرفع، حاول مرة أخرى</div>';
-          if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
-        },
-        ()=>{
-          uploadTask.snapshot.ref.getDownloadURL().then(url=>{
-            productImgData=url;
-            productImgUploading=false;
-            document.getElementById('productImgContent').innerHTML=`<img src="${url}" class="img-preview">`;
-            if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
-            showToast('✅ تم رفع الصورة','success');
-            console.log('Product img uploaded:',url);
-          });
-        }
+        null,
+        err=>{console.error('Upload error:',err);showToast('خطأ في رفع الصورة','error');},
+        ()=>{uploadTask.snapshot.ref.getDownloadURL().then(url=>{
+          productImgData=url;
+          console.log('Product img uploaded:',url);
+        });}
       );
-    }).catch(err=>{
-      showToast('خطأ في معالجة الصورة','error');
-      productImgUploading=false;
-      if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
     });
   });
 }
@@ -1501,13 +1490,6 @@ function renderLimitBanner(){
 function saveProduct(){
   const name=document.getElementById('pName').value.trim();const price=parseFloat(document.getElementById('pPrice').value);
   if(!name||isNaN(price)){showToast('يرجى إدخال الاسم والسعر','error');return;}
-  // منع الحفظ لو الصورة لسه بترتفع
-  if(productImgUploading){showToast('⏳ انتظر حتى تكتمل عملية رفع الصورة','error');return;}
-  // منع حفظ base64 في Firestore نهائياً
-  if(productImgData && productImgData.startsWith('data:')){
-    showToast('❌ لا يمكن الحفظ - الصورة لم تُرفع بعد على Storage','error');
-    return;
-  }
   const products=restaurant.products||[];
   // ── Limit check (only on new product, not edit) ──
   if(!editingProductId){
@@ -1520,18 +1502,37 @@ function saveProduct(){
   const saveBtn=document.querySelector('#productModal .btn-save');
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='جاري الحفظ...';}
 
-  const finalImg = (productImgData && !productImgData.startsWith('data:')) ? productImgData : null;
-  const data={id:editingProductId||'prod_'+Date.now(),name,price,desc:document.getElementById('pDesc').value.trim(),icon:document.getElementById('pIcon').value.trim()||'🍽',categoryId:document.getElementById('pCat').value,available:document.getElementById('pAvailable').checked,image:finalImg};
-  if(editingProductId){const pidx=products.findIndex(p=>p.id===editingProductId);products[pidx]=data;}
-  else{products.push(data);}
-  db.collection('restaurants').doc(restId).update({products:products}).then(()=>{
-    restaurant.products=products;
-    closeModal('productModal');renderProducts();renderStats();showToast('تم حفظ المنتج ✓','success');
-    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
-  }).catch(e=>{showToast('خطأ في الحفظ: '+e.message,'error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
+  const doSave=(finalImgVal)=>{
+    const data={id:editingProductId||'prod_'+Date.now(),name,price,desc:document.getElementById('pDesc').value.trim(),icon:document.getElementById('pIcon').value.trim()||'🍽',categoryId:document.getElementById('pCat').value,available:document.getElementById('pAvailable').checked,image:finalImgVal||null};
+    if(editingProductId){const pidx=products.findIndex(p=>p.id===editingProductId);products[pidx]=data;}
+    else{products.push(data);}
+    db.collection('restaurants').doc(restId).collection('products').doc(data.id).set(data).then(()=>{
+      if(!restaurant.products)restaurant.products=[];
+      const pidx2=restaurant.products.findIndex(p=>p.id===data.id);
+      if(pidx2>=0)restaurant.products[pidx2]=data; else restaurant.products.push(data);
+      db.collection('restaurants').doc(restId).update({productCount:restaurant.products.length}).catch(()=>{});
+      closeModal('productModal');renderProducts();renderStats();showToast('تم حفظ المنتج ✓','success');
+      if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
+    }).catch(e=>{showToast('خطأ في الحفظ','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
+  };
+
+  // لو الصورة URL جاهز (من Storage أو من رابط مباشر)
+  if(!productImgData || !productImgData.startsWith('data:')){
+    doSave(productImgData);
+    return;
+  }
+  // لو لسه base64 (الرفع لم يكتمل بعد) → ارفع الآن ثم احفظ
+  showToast('جاري رفع الصورة...','success');
+  const fileName='products/'+restId+'/'+(editingProductId||'prod_'+Date.now())+'_'+Date.now()+'.jpg';
+  const imgRef=storage.ref().child(fileName);
+  fetch(productImgData).then(r=>r.blob()).then(blob=>{
+    imgRef.put(blob,{contentType:'image/jpeg'}).then(snap=>{
+      snap.ref.getDownloadURL().then(url=>{productImgData=url;doSave(url);});
+    }).catch(e=>{showToast('خطأ في رفع الصورة','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
+  });
 }
-function toggleProduct(id){const products=restaurant.products||[];const pidx=products.findIndex(p=>p.id===id);products[pidx].available=!products[pidx].available;db.collection('restaurants').doc(restId).update({products:products}).then(()=>{restaurant.products=products;renderProducts();});}
-function deleteProduct(id){if(!confirm('حذف هذا المنتج؟'))return;const products=(restaurant.products||[]).filter(p=>p.id!==id);db.collection('restaurants').doc(restId).update({products:products}).then(()=>{restaurant.products=products;renderProducts();renderStats();});}
+function toggleProduct(id){const products=restaurant.products||[];const pidx=products.findIndex(p=>p.id===id);products[pidx].available=!products[pidx].available;db.collection('restaurants').doc(restId).collection('products').doc(id).update({available:products[pidx].available}).then(()=>{restaurant.products=products;renderProducts();});}
+function deleteProduct(id){if(!confirm('حذف هذا المنتج؟'))return;db.collection('restaurants').doc(restId).collection('products').doc(id).delete().then(()=>{restaurant.products=(restaurant.products||[]).filter(p=>p.id!==id);db.collection('restaurants').doc(restId).update({productCount:restaurant.products.length}).catch(()=>{});renderProducts();renderStats();});}
 
 // ===== PRODUCT SIZES =====
 let editingSizesProductId=null,tempSizes=[];
@@ -1559,8 +1560,9 @@ function saveSizes(){
   const products=restaurant.products||[];
   const pidx=products.findIndex(p=>p.id===editingSizesProductId);
   products[pidx].sizes=cleaned;
-  db.collection('restaurants').doc(restId).update({products:products}).then(()=>{
-    restaurant.products=products;closeModal('sizesModal');renderProducts();showToast('تم حفظ الأحجام','success');
+  const sp=products.find(p=>p.id===editingSizesProductId);
+  db.collection('restaurants').doc(restId).collection('products').doc(editingSizesProductId).update({sizes:cleaned}).then(()=>{
+    if(sp)sp.sizes=cleaned;restaurant.products=products;closeModal('sizesModal');renderProducts();showToast('تم حفظ الأحجام','success');
   }).catch(e=>showToast('خطأ في الحفظ','error'));
 }
 
@@ -1590,8 +1592,9 @@ function saveExtras(){
   const products=restaurant.products||[];
   const pidx=products.findIndex(p=>p.id===editingExtrasProductId);
   products[pidx].extras=cleaned;
-  db.collection('restaurants').doc(restId).update({products:products}).then(()=>{
-    restaurant.products=products;closeModal('extrasModal');renderProducts();showToast('تم حفظ الإضافات','success');
+  const ep=products.find(p=>p.id===editingExtrasProductId);
+  db.collection('restaurants').doc(restId).collection('products').doc(editingExtrasProductId).update({extras:cleaned}).then(()=>{
+    if(ep)ep.extras=cleaned;restaurant.products=products;closeModal('extrasModal');renderProducts();showToast('تم حفظ الإضافات','success');
   }).catch(e=>showToast('خطأ في الحفظ','error'));
 }
 
@@ -1609,9 +1612,7 @@ function renderCategories(){
   }).join('');
 }
 function openCatModal(id=null){
-  editingCatId=id;catImgData=null;catImgUploading=false;
-  const saveBtn=document.querySelector('#catModal .btn-save');
-  if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
+  editingCatId=id;catImgData=null;
   if(id){
     const c=restaurant.categories.find(x=>x.id===id);
     document.getElementById('catModalTitle').textContent='تعديل القسم';
@@ -1637,13 +1638,6 @@ function openCatModal(id=null){
 }
 function saveCat(){
   const name=document.getElementById('catName').value.trim();if(!name){showToast('أدخل اسم القسم','error');return;}
-  // منع الحفظ لو الصورة لسه بترتفع
-  if(catImgUploading){showToast('⏳ انتظر حتى تكتمل عملية رفع الصورة','error');return;}
-  // منع حفظ base64 في Firestore نهائياً
-  if(catImgData && catImgData.startsWith('data:')){
-    showToast('❌ لا يمكن الحفظ - الصورة لم تُرفع بعد على Storage','error');
-    return;
-  }
   const categories=restaurant.categories||[];
   // ── Limit check (only on new category, not edit) ──
   if(!editingCatId){
@@ -1656,53 +1650,55 @@ function saveCat(){
   const saveBtn=document.querySelector('#catModal .btn-save');
   if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='جاري الحفظ...';}
 
-  const finalImg = (catImgData && !catImgData.startsWith('data:')) ? catImgData : null;
-  const data={id:editingCatId||'cat_'+Date.now(),name,icon:document.getElementById('catIcon').value.trim()||'📁',desc:document.getElementById('catDesc').value.trim(),image:finalImg};
-  if(editingCatId){const cidx=categories.findIndex(c=>c.id===editingCatId);categories[cidx]=data;}
-  else{categories.push(data);}
-  db.collection('restaurants').doc(restId).update({categories:categories}).then(()=>{
-    restaurant.categories=categories;closeModal('catModal');renderCategories();showToast('تم حفظ القسم ✓','success');
-    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
-  }).catch(e=>{showToast('خطأ في الحفظ: '+e.message,'error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
+  const doSave=(finalImgVal)=>{
+    const data={id:editingCatId||'cat_'+Date.now(),name,icon:document.getElementById('catIcon').value.trim()||'📁',desc:document.getElementById('catDesc').value.trim(),image:finalImgVal||null};
+    if(editingCatId){const cidx=categories.findIndex(c=>c.id===editingCatId);categories[cidx]=data;}
+    else{categories.push(data);}
+    db.collection('restaurants').doc(restId).collection('categories').doc(data.id).set(data).then(()=>{
+      if(!restaurant.categories)restaurant.categories=[];
+      const cidx2=restaurant.categories.findIndex(c=>c.id===data.id);
+      if(cidx2>=0)restaurant.categories[cidx2]=data; else restaurant.categories.push(data);
+      db.collection('restaurants').doc(restId).update({categoryCount:restaurant.categories.length}).catch(()=>{});
+      closeModal('catModal');renderCategories();showToast('تم حفظ القسم ✓','success');
+      if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
+    }).catch(e=>{showToast('خطأ في الحفظ','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
+  };
+
+  // لو الصورة URL جاهز (من Storage أو من رابط مباشر)
+  if(!catImgData || !catImgData.startsWith('data:')){
+    doSave(catImgData);
+    return;
+  }
+  // لو لسه base64 → ارفع الآن ثم احفظ
+  showToast('جاري رفع الصورة...','success');
+  const fileName='categories/'+restId+'/'+(editingCatId||'cat_'+Date.now())+'_'+Date.now()+'.jpg';
+  const imgRef=storage.ref().child(fileName);
+  fetch(catImgData).then(r=>r.blob()).then(blob=>{
+    imgRef.put(blob,{contentType:'image/jpeg'}).then(snap=>{
+      snap.ref.getDownloadURL().then(url=>{catImgData=url;doSave(url);});
+    }).catch(e=>{showToast('خطأ في رفع الصورة','error');if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}});
+  });
 }
-let catImgUploading=false;
 function handleCatImg(input){
   const file=input.files[0];if(!file)return;
-  catImgUploading=true;
-  catImgData=null;
-  document.getElementById('catImgContent').innerHTML='<div style="font-size:.8rem;color:var(--text2);padding:10px">⏳ جاري رفع الصورة... لا تضغط حفظ حتى تكتمل</div>';
-  const saveBtn=document.querySelector('#catModal .btn-save');
-  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='انتظر رفع الصورة...';}
+  document.getElementById('catImgContent').innerHTML='<div style="font-size:.8rem;color:var(--text2);padding:10px">جاري ضغط الصورة...</div>';
   compressImage(file,1000,600,0.75,compressed=>{
+    // عرض المعاينة فوراً
+    document.getElementById('catImgContent').innerHTML=`<img src="${compressed}" class="img-preview">`;
+    catImgData=compressed; // مؤقتاً حتى يتم الرفع
+    // رفع الصورة على Firebase Storage
     const fileName='categories/'+restId+'/'+(editingCatId||'new_'+Date.now())+'_'+Date.now()+'.jpg';
     const imgRef=storage.ref().child(fileName);
     fetch(compressed).then(r=>r.blob()).then(blob=>{
       const uploadTask=imgRef.put(blob,{contentType:'image/jpeg'});
       uploadTask.on('state_changed',
-        snap=>{
-          const pct=Math.round(snap.bytesTransferred/snap.totalBytes*100);
-          document.getElementById('catImgContent').innerHTML=`<div style="font-size:.8rem;color:var(--text2);padding:10px">⬆️ جاري الرفع ${pct}%...</div>`;
-        },
-        err=>{
-          console.error('Upload error:',err);showToast('خطأ في رفع الصورة: '+err.message,'error');
-          catImgUploading=false;catImgData=null;
-          document.getElementById('catImgContent').innerHTML='<div style="color:#e53935;font-size:.8rem;padding:10px">❌ فشل الرفع، حاول مرة أخرى</div>';
-          if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
-        },
-        ()=>{
-          uploadTask.snapshot.ref.getDownloadURL().then(url=>{
-            catImgData=url;catImgUploading=false;
-            document.getElementById('catImgContent').innerHTML=`<img src="${url}" class="img-preview">`;
-            if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
-            showToast('✅ تم رفع الصورة','success');
-            console.log('Cat img uploaded:',url);
-          });
-        }
+        null,
+        err=>{console.error('Upload error:',err);showToast('خطأ في رفع الصورة','error');},
+        ()=>{uploadTask.snapshot.ref.getDownloadURL().then(url=>{
+          catImgData=url;
+          console.log('Cat img uploaded:',url);
+        });}
       );
-    }).catch(err=>{
-      showToast('خطأ في معالجة الصورة','error');
-      catImgUploading=false;
-      if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
     });
   });
 }
@@ -1712,18 +1708,13 @@ function switchCatImgTab(tab){
   document.getElementById('catTabUrl').classList.toggle('active',!isUpload);
   document.getElementById('catUploadSection').style.display=isUpload?'block':'none';
   document.getElementById('catUrlSection').style.display=isUpload?'none':'block';
-  // reset uploading flag دايماً عند التبديل
-  catImgUploading=false;
-  const saveBtn=document.querySelector('#catModal .btn-save');
   if(isUpload){
     catImgData=null;
     document.getElementById('catImgInput').value='';
     const ctick=document.getElementById('catImgUrlTick');if(ctick)ctick.style.display='none';
     document.getElementById('catImgContent').innerHTML='<div style="font-size:1.8rem;margin-bottom:4px">🖼</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة بانر القسم</p>';
-    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
   }else{
     catImgData=null;
-    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
     const existingUrl=document.getElementById('catImgUrl').value.trim();
     if(existingUrl){handleCatImgUrl(existingUrl);}
   }
@@ -1751,7 +1742,7 @@ function onCatUrlImgError(){
   const url=document.getElementById('catImgUrl').value.trim();
   if(url){document.getElementById('catImgUrlError').style.display='block';}
 }
-function deleteCat(id){if(!confirm('حذف هذا القسم؟'))return;const categories=(restaurant.categories||[]).filter(c=>c.id!==id);db.collection('restaurants').doc(restId).update({categories:categories}).then(()=>{restaurant.categories=categories;renderCategories();showToast('تم حذف القسم','error');});}
+function deleteCat(id){if(!confirm('حذف هذا القسم؟'))return;db.collection('restaurants').doc(restId).collection('categories').doc(id).delete().then(()=>{restaurant.categories=(restaurant.categories||[]).filter(c=>c.id!==id);db.collection('restaurants').doc(restId).update({categoryCount:restaurant.categories.length}).catch(()=>{});renderCategories();showToast('تم حذف القسم','error');});}
 
 // ===== REVIEWS =====
 function renderReviews(){
@@ -1830,7 +1821,7 @@ function submitReply(reviewId){
   const ridx=reviews.findIndex(r=>r.id===reviewId);if(ridx===-1)return;
   reviews[ridx].reply=text;
   reviews[ridx].replyDate=new Date().toLocaleDateString('ar-EG',{year:'numeric',month:'short',day:'numeric'});
-  db.collection('restaurants').doc(restId).update({reviews:reviews}).then(()=>{
+  db.collection('restaurants').doc(restId).collection('reviews').doc(reviewId).update({reply:text,replyDate:reviews[ridx].replyDate}).then(()=>{
     restaurant.reviews=reviews;renderReviews();updateReviewsBadge();showToast('تم إرسال الرد','success');
   });
 }
@@ -2182,7 +2173,7 @@ function _fmtBytes(b) {
 function _fsPctClass(p) { return p >= 90 ? 'danger' : p >= 60 ? 'warn' : 'ok'; }
 
 function updateFsMiniBar(data, docId) {
-  const FS_MAX = 1048576;
+  const FS_MAX = 10485760; // 10 MiB
   const pathSize = new TextEncoder().encode('restaurants/' + docId).length + 16;
   let total = pathSize;
   for (const k in data) {
@@ -2195,7 +2186,7 @@ function updateFsMiniBar(data, docId) {
   if (bar) { bar.style.width = pct.toFixed(1) + '%'; bar.className = 'fs-mini-bar ' + cls; }
   if (lbl) {
     const icon = cls === 'danger' ? '🔴' : cls === 'warn' ? '🟡' : '🟢';
-    lbl.textContent = icon + ' ' + pct.toFixed(1) + '% / 1MB';
+    lbl.textContent = icon + ' ' + pct.toFixed(1) + '% / 10MB';
     lbl.style.color = cls === 'danger' ? '#dc2626' : cls === 'warn' ? '#d97706' : 'var(--text2)';
   }
 }
@@ -2205,7 +2196,7 @@ function openFsDashModal() {
   document.getElementById('fsDashModal').classList.add('active');
   if (!restaurant) { document.getElementById('fsDashContent').innerHTML = '<p style="color:var(--text2);text-align:center;padding:20px">جاري التحميل...</p>'; return; }
   const data = restaurant;
-  const FS_MAX = 1048576;
+  const FS_MAX = 10485760; // 10 MiB
   const pathSize = new TextEncoder().encode('restaurants/' + restId).length + 16;
   let total = pathSize;
   for (const k in data) {
@@ -2255,7 +2246,7 @@ function openFsDashModal() {
   }
 
   const statusMsg = cls === 'danger'
-    ? '🔴 <strong>خطر!</strong> الـ Document قريب جداً من الـ 1MB — يجب حذف طلبات أو بيانات قديمة'
+    ? '🔴 <strong>خطر!</strong> البيانات الأساسية كبيرة جداً — تواصل مع الإدارة'
     : cls === 'warn'
     ? '🟡 <strong>تحذير</strong> — أكثر من 60% مستخدم، انتبه'
     : '🟢 <strong>كويس</strong> — مساحة كافية';
@@ -2270,7 +2261,7 @@ function openFsDashModal() {
         <div style="height:100%;width:${pct.toFixed(1)}%;background:${cls==='danger'?'#ef4444':cls==='warn'?'#ffb830':'#00b894'};border-radius:10px;transition:width .5s"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--text2);margin-top:4px">
-        <span>${_fmtBytes(total)}</span><span>الحد الأقصى: 1 MB</span>
+        <span>${_fmtBytes(total)}</span><span>الحد الأقصى: 10 MB</span>
       </div>
     </div>
     ${rows}
@@ -2278,46 +2269,6 @@ function openFsDashModal() {
       💡 لو الـ Document كبير: احذف الطلبات القديمة أو اطلب من الإدارة تفريغ سجل الطلبات.
     </div>
   `;
-}
-
-// ===== تنظيف صور base64 المحفوظة بالغلط في Firestore =====
-async function cleanBase64FromFirestore(){
-  if(!restId||!restaurant){showToast('بيانات المطعم غير جاهزة','error');return;}
-  const hasBase64Products=(restaurant.products||[]).some(p=>p.image&&p.image.startsWith('data:'));
-  const hasBase64Cats=(restaurant.categories||[]).some(c=>c.image&&c.image.startsWith('data:'));
-  if(!hasBase64Products&&!hasBase64Cats){
-    showToast('✅ لا يوجد base64 محفوظ في Firestore، كل شيء نظيف!','success');
-    return;
-  }
-  const countP=(restaurant.products||[]).filter(p=>p.image&&p.image.startsWith('data:')).length;
-  const countC=(restaurant.categories||[]).filter(c=>c.image&&c.image.startsWith('data:')).length;
-  if(!confirm(`⚠️ وُجد ${countP} منتج و ${countC} قسم بصور base64 محفوظة داخل Firestore.\n\nهل تريد حذف هذه الصور من Firestore؟\n(الصور ستُزال من المنتجات/الأقسام - يمكنك إعادة رفعها من الداشبورد)`))return;
-
-  const saveBtn=document.querySelector('#fsDashModal .btn-cancel');
-  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='جاري التنظيف...';}
-
-  try{
-    const cleanedProducts=(restaurant.products||[]).map(p=>({
-      ...p,
-      image: (p.image&&p.image.startsWith('data:'))?null:p.image
-    }));
-    const cleanedCats=(restaurant.categories||[]).map(c=>({
-      ...c,
-      image: (c.image&&c.image.startsWith('data:'))?null:c.image
-    }));
-    await db.collection('restaurants').doc(restId).update({
-      products: cleanedProducts,
-      categories: cleanedCats
-    });
-    restaurant.products=cleanedProducts;
-    restaurant.categories=cleanedCats;
-    showToast(`✅ تم التنظيف! حُذفت ${countP+countC} صورة base64 من Firestore`,'success');
-    closeModal('fsDashModal');
-    renderProducts();renderCategories();
-  }catch(e){
-    showToast('خطأ في التنظيف: '+e.message,'error');
-  }
-  if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='🧹 تنظيف الـ base64';}
 }
 
 </script>
