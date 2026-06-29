@@ -1344,7 +1344,9 @@ function renderProducts(){
   }).join('');
 }
 function openProductModal(id=null){
-  editingProductId=id;productImgData=null;
+  editingProductId=id;productImgData=null;productImgUploading=false;
+  const saveBtn=document.querySelector('#productModal .btn-save');
+  if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
   const cats=restaurant.categories||[];
   document.getElementById('pCat').innerHTML='<option value="">اختر القسم</option>'+cats.map(c=>`<option value="${c.id}">${c.icon||''} ${c.name}</option>`).join('');
   if(id){
@@ -1380,13 +1382,18 @@ function switchProductImgTab(tab){
   document.getElementById('productTabUrl').classList.toggle('active',!isUpload);
   document.getElementById('productUploadSection').style.display=isUpload?'block':'none';
   document.getElementById('productUrlSection').style.display=isUpload?'none':'block';
+  // reset uploading flag دايماً عند التبديل
+  productImgUploading=false;
+  const saveBtn=document.querySelector('#productModal .btn-save');
   if(isUpload){
     productImgData=null;
     document.getElementById('productImgInput').value='';
     const ptick=document.getElementById('productImgUrlTick');if(ptick)ptick.style.display='none';
     document.getElementById('productImgContent').innerHTML='<div style="font-size:1.8rem;margin-bottom:4px">📷</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة المنتج</p>';
+    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
   }else{
     productImgData=null;
+    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
     const existingUrl=document.getElementById('productImgUrl').value.trim();
     if(existingUrl){handleProductImgUrl(existingUrl);}
   }
@@ -1602,7 +1609,9 @@ function renderCategories(){
   }).join('');
 }
 function openCatModal(id=null){
-  editingCatId=id;catImgData=null;
+  editingCatId=id;catImgData=null;catImgUploading=false;
+  const saveBtn=document.querySelector('#catModal .btn-save');
+  if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
   if(id){
     const c=restaurant.categories.find(x=>x.id===id);
     document.getElementById('catModalTitle').textContent='تعديل القسم';
@@ -1703,13 +1712,18 @@ function switchCatImgTab(tab){
   document.getElementById('catTabUrl').classList.toggle('active',!isUpload);
   document.getElementById('catUploadSection').style.display=isUpload?'block':'none';
   document.getElementById('catUrlSection').style.display=isUpload?'none':'block';
+  // reset uploading flag دايماً عند التبديل
+  catImgUploading=false;
+  const saveBtn=document.querySelector('#catModal .btn-save');
   if(isUpload){
     catImgData=null;
     document.getElementById('catImgInput').value='';
     const ctick=document.getElementById('catImgUrlTick');if(ctick)ctick.style.display='none';
     document.getElementById('catImgContent').innerHTML='<div style="font-size:1.8rem;margin-bottom:4px">🖼</div><p style="font-size:.8rem;color:var(--text2)">اضغط لرفع صورة بانر القسم</p>';
+    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
   }else{
     catImgData=null;
+    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='حفظ';}
     const existingUrl=document.getElementById('catImgUrl').value.trim();
     if(existingUrl){handleCatImgUrl(existingUrl);}
   }
